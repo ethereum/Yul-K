@@ -1,0 +1,9 @@
+[submodule "k"]
+	path = deps/k
+	url = git@github.com:kframework/k.git
+[submodule "deps/pandoc-tangle"]
+	path = deps/pandoc-tangle
+	url = git@github.com:ehildenb/pandoc-tangle.git
+[submodule "deps/k"]
+	path = deps/k
+	url = git@github.com:kframework/k.git
