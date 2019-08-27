@@ -17,7 +17,8 @@ INSTALL_PREFIX:=/usr/local
 INSTALL_DIR?=$(DESTDIR)$(INSTALL_PREFIX)/bin
 
 DEPS_DIR:=deps
-K_SUBMODULE:=$(abspath $(DEPS_DIR)/k)
+evm_submodule:=$(DEPS_DIR)/evm-semantics
+K_SUBMODULE:=$(evm_submodule)/deps/k
 #PLUGIN_SUBMODULE:=$(abspath $(DEPS_DIR)/plugin)
 
 K_RELEASE:=$(K_SUBMODULE)/k-distribution/target/release/k
@@ -28,13 +29,25 @@ PATH:=$(K_BIN):$(PATH)
 export PATH
 
 # need relative path for `pandoc` on MacOS
-PANDOC_TANGLE_SUBMODULE:=$(DEPS_DIR)/pandoc-tangle
+PANDOC_TANGLE_SUBMODULE:=$(evm_submodule)/deps/pandoc-tangle
 TANGLER:=$(PANDOC_TANGLE_SUBMODULE)/tangle.lua
 LUA_PATH:=$(PANDOC_TANGLE_SUBMODULE)/?.lua;;
 export TANGLER
 export LUA_PATH
 
 all: build test-parse
+
+evm_make:=make --directory $(evm_submodule) DEFN_DIR=../../$(DEFN_DIR)
+evm: $(evm_submodule)/make.timestamp
+evm_files=evm.k data.k
+evm_source_files:=$(patsubst %, $(evm_submodule)/%, $(patsubst %.k, %.md, $(evm_files)))
+
+$(evm_submodule)/make.timestamp: $(evm_source_files)
+	git submodule update --init --recursive
+	$(evm_make) deps
+	$(evm_make) build-java
+	touch $(evm_submodule)/make.timestamp
+
 
 clean:
 	rm -rf $(DEFN_DIR)
@@ -64,9 +77,10 @@ llvm-deps: $(libff_out) deps
 llvm-deps: BACKEND_SKIP=-Dhaskell.backend.skip
 haskell-deps: deps
 haskell-deps: BACKEND_SKIP=-Dllvm.backend.skip
+evm-deps: $(evm_submodule)/make.timestamp
 
-deps: repo-deps system-deps
-repo-deps: tangle-deps k-deps
+
+deps: evm-deps system-deps
 system-deps: ocaml-deps
 k-deps: $(K_SUBMODULE)/make.timestamp
 tangle-deps: $(TANGLER)
@@ -95,9 +109,9 @@ ocaml-deps:
 # Building
 # --------
 
-MAIN_MODULE:=YUL
-SYNTAX_MODULE:=$(MAIN_MODULE)
-MAIN_DEFN_FILE:=yul
+MAIN_MODULE:=YULEVM
+SYNTAX_MODULE:=YUL-SYNTAX
+MAIN_DEFN_FILE:=yulevm
 KOMPILE_OPTS:=
 LLVM_KOMPILE_OPTS:=
 
@@ -119,7 +133,7 @@ build-llvm: $(llvm_kompiled)
 concrete_tangle:=.k:not(.node):not(.symbolic),.standalone,.concrete
 symbolic_tangle:=.k:not(.node):not(.concrete),.standalone,.symbolic
 
-k_files=yul.k
+k_files=yul.k yulevm.k
 EXTRA_K_FILES+=$(MAIN_DEFN_FILE).k
 ALL_K_FILES:=$(k_files) $(EXTRA_K_FILES)
 

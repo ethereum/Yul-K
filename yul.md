@@ -5,13 +5,11 @@ Yul
 
 Intermediate blockchain language
 ```k
-require "domains.k"
-module YUL
-imports ID
-imports INT
-imports STRING
+module YUL-SYNTAX
+  imports ID
+  imports INT
+  imports STRING
 ```
-
 Syntax
 ------
 
@@ -116,6 +114,7 @@ syntax Instr ::= "not"           "(" Expr                   ")"
                | "calldatasize"  "()"
                | "call" "(" Expr "," Expr "," Expr "," Expr "," Expr "," Expr "," Expr ")"
                | "delegatecall" "(" Expr "," Expr "," Expr "," Expr "," Expr "," Expr ")"
+               //But wait! There's more!
+
 endmodule
 ```
-

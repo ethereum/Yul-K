@@ -1,15 +1,15 @@
 // Code consists of a single object. A single "code" node is the code of the object.
 // Every (other) named object or data section is serialized and
-// made accessible to the special built-in functions datacopy / dataoffset / datasize
+// made accessible to the special built-in functions datacopy / dataoffset / datasizee
 // Access to nested objects can be performed by joining the names using ``.``.
 // The current object and sub-objects and data items inside the current object
 // are in scope without nested access.
 object "Contract1" {
     code {
-        function allocate(siz) -> ptr {
+        function allocate(size) -> ptr {
             ptr := mload(0x40)
             if iszero(ptr) { ptr := 0x60 }
-            mstore(0x40, add(ptr, siz))
+            mstore(0x40, add(ptr, size))
         }
 
         // first create "runtime.Contract2"
