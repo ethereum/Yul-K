@@ -1,3 +1,6 @@
 [submodule "deps/evm-semantics"]
 	path = deps/evm-semantics
 	url = git@github.com:kframework/evm-semantics.git
+[submodule "deps/eei-semantics"]
+	path = deps/eei-semantics
+	url = git@github.com:kframework/eei-semantics.git
