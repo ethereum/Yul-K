@@ -17,8 +17,10 @@ INSTALL_PREFIX:=/usr/local
 INSTALL_DIR?=$(DESTDIR)$(INSTALL_PREFIX)/bin
 
 DEPS_DIR:=deps
+eei_submodule:=$(DEPS_DIR)/eei-semantics
 evm_submodule:=$(DEPS_DIR)/evm-semantics
 K_SUBMODULE:=$(evm_submodule)/deps/k
+
 #PLUGIN_SUBMODULE:=$(abspath $(DEPS_DIR)/plugin)
 
 K_RELEASE:=$(K_SUBMODULE)/k-distribution/target/release/k
@@ -39,14 +41,27 @@ all: build test-parse
 
 evm_make:=make --directory $(evm_submodule) DEFN_DIR=../../$(DEFN_DIR)
 evm: $(evm_submodule)/make.timestamp
+
+eei_make:=make --directory $(eei_submodule) DEFN_DIR=../../$(DEFN_DIR)
+eei_clean:=make --directory $(eei_submodule) clean
+
 evm_files=evm.k data.k
+eei_files=eei-driver.k eei.k
 evm_source_files:=$(patsubst %, $(evm_submodule)/%, $(patsubst %.k, %.md, $(evm_files)))
+
+eei_source_files:=$(patsubst %, $(eei_submodule)/%, $(patsubst %.k, %.md, $(eei_files)))
 
 $(evm_submodule)/make.timestamp: $(evm_source_files)
 	git submodule update --init --recursive
 	$(evm_make) deps
 	$(evm_make) build-java
 	touch $(evm_submodule)/make.timestamp
+
+$(eei_submodule)/make.timestamp: $(eei_source_files)
+	git submodule update --init --recursive
+	$(eei_make) deps
+	$(eei_make) build-java
+	touch $(eei_submodule)/make.timestamp
 
 
 clean:
@@ -78,9 +93,9 @@ llvm-deps: BACKEND_SKIP=-Dhaskell.backend.skip
 haskell-deps: deps
 haskell-deps: BACKEND_SKIP=-Dllvm.backend.skip
 evm-deps: $(evm_submodule)/make.timestamp
+eei-deps: $(eei_submodule)/make.timestamp
 
-
-deps: evm-deps system-deps
+deps: eei-deps system-deps
 system-deps: ocaml-deps
 k-deps: $(K_SUBMODULE)/make.timestamp
 tangle-deps: $(TANGLER)
@@ -121,7 +136,7 @@ node_kompiled:=$(DEFN_DIR)/vm/kevm-vm
 haskell_kompiled:=$(DEFN_DIR)/haskell/$(MAIN_DEFN_FILE)-kompiled/definition.kore
 llvm_kompiled:=$(DEFN_DIR)/llvm/$(MAIN_DEFN_FILE)-kompiled/interpreter
 
-build: build-java
+build: eei-deps build-java
 build-ocaml: $(ocaml_kompiled)
 build-java: $(java_kompiled)
 build-node: $(node_kompiled)
@@ -133,7 +148,7 @@ build-llvm: $(llvm_kompiled)
 concrete_tangle:=.k:not(.node):not(.symbolic),.standalone,.concrete
 symbolic_tangle:=.k:not(.node):not(.concrete),.standalone,.symbolic
 
-k_files=yul.k yulevm.k
+k_files=yulevm.k yul.k
 EXTRA_K_FILES+=$(MAIN_DEFN_FILE).k
 ALL_K_FILES:=$(k_files) $(EXTRA_K_FILES)
 
@@ -203,25 +218,36 @@ else
   LIBFLAG=-shared
 endif
 
-$(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/constants.$(EXT): $(ocaml_files)
-	@echo "== kompile: $@"
-	eval $$(opam config env) \
-	    && $(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) \
-	                        --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE).k \
-	                        --directory $(DEFN_DIR)/ocaml -I $(DEFN_DIR)/ocaml $(KOMPILE_OPTS) \
-	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
-	    && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
+ocaml_dir:=$(DEFN_DIR)/ocaml
+#ocaml_defn:=$(patsubst %, $(ocaml_dir)/%, $(_files))
 
-$(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/interpreter: $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/plugin/semantics.$(LIBEXT)
-	eval $$(opam config env) \
-	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
-	        && ocamllex lexer.mll \
-	        && ocamlyacc parser.mly \
-	        && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml hooks.ml run.ml -thread \
-	        && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package ethereum-semantics-plugin-ocaml -safe-string realdef.ml -match-context-rows 2 \
-	        && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT) \
-	        && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) hooks.$(EXT) run.$(EXT) interpreter.ml \
-	                               -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package ethereum-semantics-plugin-ocaml -linkpkg -linkall -thread -safe-string
+$(ocaml_kompiled): $(ocaml_files)
+	@echo "== kompile: $@"
+	eval $$(opam config env)                              \
+	    $(K_BIN)/kompile -O3 --non-strict --backend ocaml \
+	    --directory $(ocaml_dir) -I $(ocaml_dir)          \
+	    --main-module   $(MAIN_MODULE)                    \
+      --syntax-module $(SYNTAX_MODULE) $<
+
+# $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/constants.$(EXT): $(ocaml_files)
+# 	@echo "== kompile: $@"
+# 	eval $$(opam config env) \
+# 	    && $(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) \
+# 	                        --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE).k \
+# 	                        --directory $(DEFN_DIR)/ocaml -I $(DEFN_DIR)/ocaml $(KOMPILE_OPTS) \
+# 	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
+# 	    && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
+
+# $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/interpreter: $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/plugin/semantics.$(LIBEXT)
+# 	eval $$(opam config env) \
+# 	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
+# 	        && ocamllex lexer.mll \
+# 	        && ocamlyacc parser.mly \
+# 	        && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml hooks.ml run.ml -thread \
+# 	        && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package ethereum-semantics-plugin-ocaml -safe-string realdef.ml -match-context-rows 2 \
+# 	        && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT) \
+# 	        && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) hooks.$(EXT) run.$(EXT) interpreter.ml \
+# 	                               -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package ethereum-semantics-plugin-ocaml -linkpkg -linkall -thread -safe-string
 
 # LLVM Backend
 
@@ -253,8 +279,7 @@ tests/%.parse: tests/%
 
 # Parse Tests
 
-parse_tests:=$(wildcard tests/simple/*.yul) #\
-#   $(wildcard tests/libyul/yulOptimizerTests/*/*.yul) \
+parse_tests:=$(wildcard tests/libyul/yulOptimizerTests/*/*.yul)
 
 test-parse: $(parse_tests:=.parse)
 	echo $(parse_tests)

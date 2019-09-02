@@ -5,10 +5,17 @@ Yul
 
 Intermediate blockchain language
 ```k
+module YUL-LITERALS
+   syntax HexLiteral ::= "hex" r"\\\"[0-9a-fA-F]*\\\"" [token]
+endmodule
+
 module YUL-SYNTAX
   imports ID
   imports INT
   imports STRING
+  imports BYTES
+  imports YUL-LITERALS
+  imports MAP
 ```
 Syntax
 ------
@@ -23,15 +30,16 @@ syntax #Layout ::= r"\\/\\/[^\\n\\r]*" [token]
 // -------------------------------------------
 
 
-syntax Object ::= "object" String "{" Code "}"
-                | "object" String "{" Code Chunk "}"
+syntax Object ::= "object" String "{" Code Chunks "}"
 
 syntax Chunk ::= Object | Data | Code
 
+syntax Chunks ::= List{Chunk, "\n"} [klabel(listChunk)]
+
 syntax Code ::= "code" Block
 
-syntax Data ::= "data" Id Hex
-              | "data" Id String
+syntax Data ::= "data" String HexLiteral
+              | "data" String String
 
 syntax Block ::= "{" Stmts "}"
 
@@ -55,7 +63,8 @@ syntax FunctionDefinition ::= "function" Id"("Ids")" Block
                             | "function" Id"()"
                             | "function" Id"()" "->" Ids Block
 
-syntax VariableDeclaration ::= "let" Id ":=" Expr
+syntax VariableDeclaration ::= "let" Id ":=" Expr [strict(2)]
+                             | "let" Id
 
 syntax Assignment ::= Id ":=" Expr
 
@@ -80,9 +89,11 @@ syntax FunctionCall ::= Id "(" Exprs ")"
                       | Id "()"
                       | Instr
 
-syntax Literal ::= Int | String | Hex | Bool
+syntax Literal ::= Int | String | HexNumber | Bool
 
-syntax Hex ::= r"[\\+-]?0x[0-9a-fA-F]*" [token]
+syntax KResult ::= Int
+
+syntax HexNumber ::= r"0x[0-9a-fA-F]*" [token]
 
 syntax Instr ::= "not"           "(" Expr                   ")"
                | "and"           "(" Expr "," Expr          ")"
@@ -115,6 +126,23 @@ syntax Instr ::= "not"           "(" Expr                   ")"
                | "call" "(" Expr "," Expr "," Expr "," Expr "," Expr "," Expr "," Expr ")"
                | "delegatecall" "(" Expr "," Expr "," Expr "," Expr "," Expr "," Expr ")"
                //But wait! There's more!
+
+
+
+syntax Int ::= "pow256" /* 2 ^Int 256 */
+
+rule pow256 => 115792089237316195423570985008687907853269984665640564039457584007913129639936 [macro]
+
+
+syntax Map ::= Map "[" Int ":=" Bytes "]" [function, klabel(mapWriteBytes)]
+// ------------------------------------------------------------------------
+rule WM[ N := WS ] => WM [ N := WS, 0, lengthBytes(WS) ]
+
+syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
+// -----------------------------------------------------------------
+rule WM [ N := WS, I, I ] => WM
+rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
+
 
 endmodule
 ```
