@@ -37,7 +37,7 @@ LUA_PATH:=$(PANDOC_TANGLE_SUBMODULE)/?.lua;;
 export TANGLER
 export LUA_PATH
 
-all: build test-parse
+all: build
 
 evm_make:=make --directory $(evm_submodule) DEFN_DIR=../../$(DEFN_DIR)
 evm: $(evm_submodule)/make.timestamp
@@ -218,9 +218,6 @@ else
   LIBFLAG=-shared
 endif
 
-ocaml_dir:=$(DEFN_DIR)/ocaml
-#ocaml_defn:=$(patsubst %, $(ocaml_dir)/%, $(_files))
-
 $(ocaml_kompiled): $(ocaml_files)
 	@echo "== kompile: $@"
 	eval $$(opam config env)                              \
@@ -228,6 +225,11 @@ $(ocaml_kompiled): $(ocaml_files)
 	    --directory $(ocaml_dir) -I $(ocaml_dir)          \
 	    --main-module   $(MAIN_MODULE)                    \
       --syntax-module $(SYNTAX_MODULE) $<
+
+
+ocaml_dir:=$(DEFN_DIR)/ocaml
+#ocaml_defn:=$(patsubst %, $(ocaml_dir)/%, $(_files))
+
 
 # $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/constants.$(EXT): $(ocaml_files)
 # 	@echo "== kompile: $@"

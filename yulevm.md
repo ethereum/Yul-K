@@ -1,15 +1,11 @@
 Imports EEI semantics for now
 
 ```k
-//requires "domains.k"
 requires "eei.k"
-//requires "data.k" //of evm-semantics
 requires "yul.k"
 module YULEVM
 imports YUL-SYNTAX
-//imports INT
 imports EEI
-//imports EVM-DATA
 
 configuration
       <yul>
@@ -20,42 +16,49 @@ configuration
       </yul>
 
 ```
+
 ### Control flow
 
 ```k
+syntax Stmt ::= "#for" Expr Block Block
+               | "#freezerIf" Block
 
-syntax KItem ::= Block
+rule <k> for { STMTS } COND END BODY => STMTS ~> #for COND END BODY ~> #resetEnv STORE ... </k>
+     <varStore> STORE </varStore>
 
-syntax KItem ::= "#for" Expr Block Block
+rule <k> #for COND { END } { BODY } => COND ~> #freezerIf { END BODY #for COND {END} {BODY} } ... </k> [structural]
 
-rule <k> for BEGIN COND END BODY => BEGIN ~> #for COND END BODY ... </k>
+rule <k> COND ~> #freezerIf BODY => . ... </k>
+requires COND ==Int 0
 
-rule <k> #for COND END BODY => BODY ~> END ~> #for COND END BODY ... </k>
-requires COND =/=K 0
+rule <k> COND ~> #freezerIf { BODY } => BODY ... </k>
+requires COND =/=Int 0
 
-rule <k> #for COND END BODY => . ... </k>
-requires COND ==K 0
+rule <k> ST STMTS:Stmts => ST ~> STMTS ... </k> [structural]
+rule <k> .Stmts => . ... </k> [structural]
 ```
 ### Variable handling
 
 ```k
-syntax KItem ::= "#put" Id
-               | "#get" Id
+syntax KItem ::= "#resetEnv" Map
 
-rule <k> let X := Y => Y ~> #put X ... </k>
-     <varStore> VARS </varStore>
-     requires notBool X in_keys(VARS)
+rule <k> { B } => B ~> #resetEnv STORE ... </k>
+     <varStore> STORE </varStore>
 
-rule <k> X := Y => Y ~> #put X ... </k>
-     <varStore> VARS </varStore>
-     requires X in_keys(VARS)
+rule <k> #resetEnv STORE => . ... </k>
+     <varStore> _ => STORE </varStore>
 
-rule <k> Y ~> #put X ... </k>
+rule <k> let X := Y => . ... </k>
      <varStore> VARS => VARS [X <- Y] </varStore>
      requires notBool X in_keys(VARS)
 
-rule <k> #get X => VAL ... </k>
+rule <k> X := Y => . ... </k>
+     <varStore> VARS => VARS [X <- Y] </varStore>
+     requires X in_keys(VARS)
+
+rule <k> X:Id => VAL ... </k>
      <varStore> (X |-> VAL) M </varStore>
+
 ```
 
 ### Arithmetic
@@ -89,7 +92,6 @@ rule <k> #get X => VAL ... </k>
     rule bool2Word( B:Bool ) => 1 requires B
     rule bool2Word( B:Bool ) => 0 requires notBool B
 
-
 rule <k> add(X, Y) => X +Word Y ... </k>
 rule <k> mul(X, Y) => X *Word Y ... </k>
 rule <k> lt(X, Y)  => X <Word Y ... </k>
@@ -99,11 +101,7 @@ rule <k> lt(X, Y)  => X <Word Y ... </k>
 
 ### Memory
 ```k
-syntax KItem ::= "#mstore"
-
-rule <k> mstore(X, Y) => X ~> Y ~> #mstore ... </k>
-
-rule <k> X ~> Y ~> #mstore => . ... </k>
+rule <k> mstore(X, Y) => . ... </k>
      <memory> MEM => MEM [X := padLeftBytes(Int2Bytes(Y, BE, Unsigned), 32, 0)] </memory>
 
 endmodule

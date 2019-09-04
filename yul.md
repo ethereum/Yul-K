@@ -66,13 +66,13 @@ syntax FunctionDefinition ::= "function" Id"("Ids")" Block
 syntax VariableDeclaration ::= "let" Id ":=" Expr [strict(2)]
                              | "let" Id
 
-syntax Assignment ::= Id ":=" Expr
+syntax Assignment ::= Id ":=" Expr [strict(2)]
 
 syntax Expr ::= FunctionCall | Id | Literal
 
 syntax Exprs ::=  List{Expr, ","} [klabel(listId)]
 
-syntax Cond ::= "if" Expr Block
+syntax Cond ::= "if" Expr Block [strict(1)]
 
 syntax Switch ::= "switch" Expr Cases
 
@@ -93,32 +93,33 @@ syntax Literal ::= Int | String | HexNumber | Bool
 
 syntax KResult ::= Int
 
+//TODO: How to convert this to int?
 syntax HexNumber ::= r"0x[0-9a-fA-F]*" [token]
 
-syntax Instr ::= "not"           "(" Expr                   ")"
-               | "and"           "(" Expr "," Expr          ")"
-               | "or"            "(" Expr "," Expr          ")"
-               | "xor"           "(" Expr "," Expr          ")"
-               | "add"           "(" Expr "," Expr          ")"
-               | "sub"           "(" Expr "," Expr          ")"
-               | "mul"           "(" Expr "," Expr          ")"
-               | "divu"          "(" Expr "," Expr          ")"
-               | "divs"          "(" Expr "," Expr          ")"
-               | "mod"           "(" Expr "," Expr          ")"
-               | "mstore"        "(" Expr "," Expr          ")"
-               | "mstore8"       "(" Expr "," Expr          ")"
-               | "sstore"        "(" Expr "," Expr          ")"
-               | "return"        "(" Expr "," Expr          ")"
-               | "revert"        "(" Expr "," Expr          ")"
-               | "mload"         "(" Expr                   ")"
-               | "calldatacopy"  "(" Expr "," Expr "," Expr ")"
-               | "datacopy"      "(" Expr "," Expr "," Expr ")"
-               | "sload"         "(" Expr                   ")"
-               | "lt"            "(" Expr "," Expr          ")"
-               | "gt"            "(" Expr "," Expr          ")"
-               | "keccak256"     "(" Expr "," Expr          ")"
-               | "iszero"        "(" Expr                   ")"
-               | "codecopy"      "(" Expr "," Expr "," Expr ")"
+syntax Instr ::= "not"           "(" Expr                   ")" [strict]
+               | "and"           "(" Expr "," Expr          ")" [strict]
+               | "or"            "(" Expr "," Expr          ")" [strict]
+               | "xor"           "(" Expr "," Expr          ")" [strict]
+               | "add"           "(" Expr "," Expr          ")" [strict]
+               | "sub"           "(" Expr "," Expr          ")" [strict]
+               | "mul"           "(" Expr "," Expr          ")" [strict] 
+               | "divu"          "(" Expr "," Expr          ")" [strict]
+               | "divs"          "(" Expr "," Expr          ")" [strict]
+               | "mod"           "(" Expr "," Expr          ")" [strict]
+               | "mstore"        "(" Expr "," Expr          ")" [strict]
+               | "mstore8"       "(" Expr "," Expr          ")" [strict]
+               | "sstore"        "(" Expr "," Expr          ")" [strict]
+               | "return"        "(" Expr "," Expr          ")" [strict]
+               | "revert"        "(" Expr "," Expr          ")" [strict]
+               | "mload"         "(" Expr                   ")" [strict]
+               | "calldatacopy"  "(" Expr "," Expr "," Expr ")" [strict]
+               | "datacopy"      "(" Expr "," Expr "," Expr ")" [strict]
+               | "sload"         "(" Expr                   ")" [strict]
+               | "lt"            "(" Expr "," Expr          ")" [strict]
+               | "gt"            "(" Expr "," Expr          ")" [strict]
+               | "keccak256"     "(" Expr "," Expr          ")" [strict]
+               | "iszero"        "(" Expr                   ")" [strict]
+               | "codecopy"      "(" Expr "," Expr "," Expr ")" [strict]
                | "datasize" "(" String ")"
                | "dataoffset" "(" String ")"
                | "msize"         "()"
@@ -142,7 +143,6 @@ syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
 // -----------------------------------------------------------------
 rule WM [ N := WS, I, I ] => WM
 rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
-
 
 endmodule
 ```
