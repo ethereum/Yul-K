@@ -5,16 +5,11 @@ Yul
 
 Intermediate blockchain language
 ```k
-module YUL-LITERALS
-   syntax HexLiteral ::= "hex" r"\\\"[0-9a-fA-F]*\\\"" [token]
-endmodule
-
 module YUL-SYNTAX
   imports ID
   imports INT
   imports STRING
   imports BYTES
-  imports YUL-LITERALS
   imports MAP
 ```
 Syntax
@@ -91,6 +86,10 @@ syntax FunctionCall ::= Id "(" Exprs ")"
 
 syntax Literal ::= Int | String | HexNumber | Bool
 
+syntax HexLiteral ::= "hex" String
+
+//syntax HexNumber ::= "0x" String
+
 syntax KResult ::= Int
 
 //TODO: How to convert this to int?
@@ -145,5 +144,13 @@ syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
 rule WM [ N := WS, I, I ] => WM
 rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
 
+
+    syntax String  ::= #parseHexString   ( HexNumber ) [function, functional, hook(STRING.token2string)]
+    syntax Int ::= #parseHexWord ( String ) [function]
+ // ----------------------------------------------------
+    rule #parseHexWord("")   => 0
+    rule #parseHexWord("0x") => 0
+    rule #parseHexWord(S)    => String2Base(replaceAll(S, "0x", ""), 16) requires (S =/=String "") andBool (S =/=String "0x")
+    
 endmodule
 ```

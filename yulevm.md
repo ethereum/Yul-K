@@ -27,23 +27,6 @@ configuration
 
 ```
 
-
-```k
-
-//rule <k> #newAccount ACCT => . ... </k>
-//     <accounts>
-//     (.Bag => <account>
-//                <id>      ACCT     </id>
-//                <balance> 0     </balance>
-//                <code>    .Code </code>
-//                <storage> .Map  </storage>
-//                <nonce>   0     </nonce>
-//              </account>)
-//              ...
-//      </accounts>
-
-```
-
 ### Control flow
 
 ```k
@@ -73,12 +56,10 @@ rule <k> ... .Stmts => .K ... </k>
 ### Variable handling
 
 ```k
-syntax KItem ::= "#resetEnv" Set
+syntax Stmt ::= "#resetEnv" Set
 
-rule <k> { B } => B ... </k>
-//TODO: variable scoping
-// rule <k> { B } => B ~> #resetEnv STORE ... </k>
-//      <varStore> STORE </varStore>
+rule <k> { B } => B ~> #resetEnv keys(STORE) ... </k>
+     <varStore> STORE </varStore>
 
 rule <k> #resetEnv SCOPEDVARS => .K ... </k>
 <varStore> STORE => removeAll(STORE, keys(STORE) -Set SCOPEDVARS) </varStore>
@@ -176,6 +157,14 @@ rule <k> xor(X, Y)  => X xorWord Y ... </k>
 rule <k> and(X, Y)  => X &Word Y ... </k>
 ```
 
+
+### Hex
+
+
+```k
+
+rule <k> X:HexNumber => #parseHexWord(#parseHexString(X)) ... </k>
+```
 ### Memory
 ```k
 rule <k> mstore(X, Y) => . ... </k>
