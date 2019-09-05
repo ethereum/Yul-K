@@ -129,6 +129,7 @@ syntax Instr ::= "not"           "(" Expr                   ")" [strict]
                //But wait! There's more!
 
 
+//syntax Stmt ::= "#newAccount" Int
 
 syntax Int ::= "pow256" /* 2 ^Int 256 */
 
