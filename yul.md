@@ -9,7 +9,6 @@ module YUL-SYNTAX
   imports ID
   imports INT
   imports STRING
-  imports BYTES
 ```
 Syntax
 ------
@@ -57,8 +56,8 @@ syntax FunctionDefinition ::= "function" Id"("Ids")" Block
                             | "function" Id"()"
                             | "function" Id"()" "->" Ids Block
 
-syntax VariableDeclaration ::= "let" Id ":=" Expr [strict(2)]
-                             | "let" Id
+syntax VariableDeclaration ::= "let" Ids ":=" Expr [strict(2)]
+                             | "let" Ids
 
 syntax Assignment ::= Id ":=" Expr [strict(2)]
 
@@ -140,5 +139,6 @@ rule pow256 => 11579208923731619542357098500868790785326998466564056403945758400
     rule #parseHexWord("")   => 0
     rule #parseHexWord("0x") => 0
     rule #parseHexWord(S)    => String2Base(replaceAll(S, "0x", ""), 16) requires (S =/=String "") andBool (S =/=String "0x")
+
 endmodule
 ```

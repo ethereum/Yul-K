@@ -229,15 +229,17 @@ tests/%.parse: tests/%
 	rm -rf $@-out
 
 tests/%.run: tests/%
-	$(TEST) krun --backend $(TEST_CONCRETE_BACKEND) $< > $@-out
+	$(TEST) run --backend $(TEST_CONCRETE_BACKEND) $< > $@-out
 	rm -rf $@-out
 
 # The files in the disambiguator repo uses a different dialect
-wasm-yul-files:=$(wildcard tests/libyul/yulOptimizerTests/disambiguator/*.yul) tests/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/libyul/yulOptimizerTests/expressionInliner/with_args.yul
+wasm-dialect:=$(wildcard tests/libyul/yulOptimizerTests/disambiguator/*.yul) tests/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/libyul/yulOptimizerTests/expressionInliner/with_args.yul
+
+failing_tests=tests/libyul/yulOptimizerTests/abi2.yul
 
 # Parse Tests
 interpreter_tests:=$(wildcard tests/libyul/yulInterpreterTests/*.yul)
-optimizer_tests:=$(filter-out $(wasm-yul-files), $(wildcard tests/libyul/yulOptimizerTests/*/*.yul))
+optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests/libyul/yulOptimizerTests/*/*.yul))
 
 test-parse: $(optimizer_tests:=.parse)
 

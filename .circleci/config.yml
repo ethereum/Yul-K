@@ -1,16 +1,20 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: debian:stretch
-
     steps:
       - checkout
+      - run:
+          name: Make dependencies
+          command: make deps
+      - run:
+          name: Build java definition
+          command: make build-java
+  test:
+    steps:
+      - run:
+          name: Parsing
+          command: make test-parse
 
       - run:
-          name: Greeting
-          command: echo Hello, world.
-
-      - run:
-          name: Print the Current Time
-          command: date
+          name: Interpret
+          command: make test-run

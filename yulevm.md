@@ -7,6 +7,7 @@ requires "yul.k"
 module YULEVM
 imports YUL-SYNTAX
 imports MAP
+imports BYTES
 //imports EEI
 configuration
       <yul>
@@ -184,7 +185,7 @@ rule WM[ N := WS ] => WM [ N := WS, 0, lengthBytes(WS) ]
 syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
 // -----------------------------------------------------------------
 rule WM [ N := WS, I, I ] => WM
-rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
+rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ] requires I <Int J
 
 endmodule
 ```

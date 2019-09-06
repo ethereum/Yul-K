@@ -81,13 +81,13 @@ run_klab() {
     klab_log="$(basename "${run_file%-spec.k}")"
 
     "$0" "$run_mode" --backend java "$run_file" \
+        --debug \
         --state-log --state-log-path "$KLAB_OUT/data" --state-log-id "$klab_log" \
         --state-log-events OPEN,EXECINIT,SEARCHINIT,REACHINIT,REACHTARGET,REACHPROVED,NODE,RULE,SRULE,RULEATTEMPT,IMPLICATION,Z3QUERY,Z3RESULT,CLOSE \
         --output-flatten "_Map_ #And" \
         --output-tokenize "_;__EVM ___EVM ____EVM _____EVM" \
         --output-omit "<programBytes> <program> <code> <callGas> <touchedAccounts> <interimStates> <callStack> <callData>" \
         --no-alpha-renaming --restore-original-names --no-sort-collections \
-        --output json \
         "$@"
 }
 
@@ -147,7 +147,6 @@ if [[ "$run_command" == 'help' ]]; then
                $0 kast       [--backend (ocaml|java)]              <pgm>  <output format> <K arg>*
                $0 prove      [--backend (java|haskell)]            <spec> <K arg>* -m <def_module>
                $0 search     [--backend (java|haskell)]            <pgm>  <pattern> <K arg>*
-               $0 web3       [--backend (llvm)]                    -p <port>
                $0 klab-run                                         <pgm>  <K arg>*
                $0 klab-prove                                       <spec> <K arg>* -m <def_module>
                $0 klab-view                                        <spec>
