@@ -10,7 +10,6 @@ module YUL-SYNTAX
   imports INT
   imports STRING
   imports BYTES
-  imports MAP
 ```
 Syntax
 ------
@@ -135,22 +134,11 @@ syntax Int ::= "pow256" /* 2 ^Int 256 */
 rule pow256 => 115792089237316195423570985008687907853269984665640564039457584007913129639936 [macro]
 
 
-syntax Map ::= Map "[" Int ":=" Bytes "]" [function, klabel(mapWriteBytes)]
-// ------------------------------------------------------------------------
-rule WM[ N := WS ] => WM [ N := WS, 0, lengthBytes(WS) ]
-
-syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
-// -----------------------------------------------------------------
-rule WM [ N := WS, I, I ] => WM
-rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
-
-
     syntax String  ::= #parseHexString   ( HexNumber ) [function, functional, hook(STRING.token2string)]
     syntax Int ::= #parseHexWord ( String ) [function]
  // ----------------------------------------------------
     rule #parseHexWord("")   => 0
     rule #parseHexWord("0x") => 0
     rule #parseHexWord(S)    => String2Base(replaceAll(S, "0x", ""), 16) requires (S =/=String "") andBool (S =/=String "0x")
-    
 endmodule
 ```

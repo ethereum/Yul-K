@@ -6,8 +6,8 @@ Imports EEI semantics for now
 requires "yul.k"
 module YULEVM
 imports YUL-SYNTAX
+imports MAP
 //imports EEI
-
 configuration
       <yul>
       <k> $PGM </k>
@@ -24,7 +24,6 @@ configuration
           <gas>       0      </gas>       // \mu_g
       </callState>
       </yul>
-
 ```
 
 ### Control flow
@@ -32,7 +31,7 @@ configuration
 ```k
 syntax Stmt ::= "#for" Expr Block Block
 
-rule <k> for { STMTS } COND END BODY => STMTS ~> #for COND END BODY ~> #resetEnv keys(STORE) ... </k>
+rule <k> for { STMTS } COND END BODY => STMTS ~> #for COND END BODY ~> #resetEnv STORE ... </k>
      <varStore> STORE </varStore>
 
 rule <k> #for COND END BODY => if COND { BODY END #for COND END BODY } ... </k>
@@ -47,7 +46,7 @@ rule <k> break ~> #for COND END BODY => .K ... </k>
 rule <k> break ~> ST:Stmt => break ... </k> [owise]
 
 rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k>
-rule <k> continue ~> #for COND END BODY ~> CONT => #for COND END BODY ~> CONT ... </k>
+rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>
 
 
 rule <k> ... ST STMTS:Stmts => ST ~> STMTS ... </k>
@@ -56,15 +55,13 @@ rule <k> ... .Stmts => .K ... </k>
 ### Variable handling
 
 ```k
-syntax Stmt ::= "#resetEnv" Set
 
-rule <k> { B } => B ~> #resetEnv keys(STORE) ... </k>
+syntax Stmt ::= "#resetEnv" Map
+
+rule <k> { B } => B ~> #resetEnv STORE ... </k>
      <varStore> STORE </varStore>
-
-rule <k> #resetEnv SCOPEDVARS => .K ... </k>
-<varStore> STORE => removeAll(STORE, keys(STORE) -Set SCOPEDVARS) </varStore>
-
-syntax Map ::= "#restore" Map Map
+rule <k> #resetEnv OLDSTORE => .K ... </k>
+<varStore> STORE => removeAll(STORE, keys(STORE) -Set keys(OLDSTORE)) </varStore>
 
 
 rule <k> let X := Y:Int => . ... </k>
@@ -179,6 +176,15 @@ syntax Bytes ::= #range ( Map , Int , Int )                 [function]
 rule #range(WM, START, WIDTH) => #range(WM, START, 0, WIDTH, padLeftBytes(.Bytes, WIDTH, 0))
 rule #range(WM, I, WIDTH, WIDTH, WS) => WS
 rule #range(WM, I,     J, WIDTH, WS) => #range(WM, I +Int 1, J +Int 1, WIDTH, WS [ J <- {WM[I] orDefault 0}:>Int ]) [owise]
+
+syntax Map ::= Map "[" Int ":=" Bytes "]" [function, klabel(mapWriteBytes)]
+// ------------------------------------------------------------------------
+rule WM[ N := WS ] => WM [ N := WS, 0, lengthBytes(WS) ]
+
+syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
+// -----------------------------------------------------------------
+rule WM [ N := WS, I, I ] => WM
+rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ]
 
 endmodule
 ```

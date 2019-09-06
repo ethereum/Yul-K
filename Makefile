@@ -136,7 +136,7 @@ node_kompiled:=$(DEFN_DIR)/vm/kevm-vm
 haskell_kompiled:=$(DEFN_DIR)/haskell/$(MAIN_DEFN_FILE)-kompiled/definition.kore
 llvm_kompiled:=$(DEFN_DIR)/llvm/$(MAIN_DEFN_FILE)-kompiled/interpreter
 
-build: eei-deps build-java
+build: build-java
 build-ocaml: $(ocaml_kompiled)
 build-java: $(java_kompiled)
 build-node: $(node_kompiled)
@@ -160,26 +160,14 @@ defn_files=$(ocaml_files) $(llvm_file) $(java_files) $(haskell_files) $(node_fil
 
 defn: $(defn_files)
 ocaml-defn: $(ocaml_files)
-llvm-defn: $(llvm_files)
 java-defn: $(java_files)
-haskell-defn: $(haskell_files)
 
 $(DEFN_DIR)/ocaml/%.k: %.md $(TANGLER)
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
 	pandoc --from markdown --to "$(TANGLER)" --metadata=code:"$(concrete_tangle)" $< > $@
 
-$(DEFN_DIR)/llvm/%.k: %.md $(TANGLER)
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to "$(TANGLER)" --metadata=code:"$(concrete_tangle)" $< > $@
-
 $(DEFN_DIR)/java/%.k: %.md $(TANGLER)
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to "$(TANGLER)" --metadata=code:"$(symbolic_tangle)" $< > $@
-
-$(DEFN_DIR)/haskell/%.k: %.md $(TANGLER)
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
 	pandoc --from markdown --to "$(TANGLER)" --metadata=code:"$(symbolic_tangle)" $< > $@
@@ -193,14 +181,7 @@ $(java_kompiled): $(java_files)
 	                 --directory $(DEFN_DIR)/java -I $(DEFN_DIR)/java \
 	                 $(KOMPILE_OPTS)
 
-# Haskell Backend
-
-$(haskell_kompiled): $(haskell_files)
-	@echo "== kompile: $@"
-	$(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) --backend haskell --hook-namespaces KRYPTO \
-	                 --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/haskell/$(MAIN_DEFN_FILE).k \
-	                 --directory $(DEFN_DIR)/haskell -I $(DEFN_DIR)/haskell \
-	                 $(KOMPILE_OPTS)
+# Haskell Backend (not supported)
 
 # OCAML Backend
 
@@ -231,39 +212,8 @@ ocaml_dir:=$(DEFN_DIR)/ocaml
 #ocaml_defn:=$(patsubst %, $(ocaml_dir)/%, $(_files))
 
 
-# $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/constants.$(EXT): $(ocaml_files)
-# 	@echo "== kompile: $@"
-# 	eval $$(opam config env) \
-# 	    && $(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) \
-# 	                        --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE).k \
-# 	                        --directory $(DEFN_DIR)/ocaml -I $(DEFN_DIR)/ocaml $(KOMPILE_OPTS) \
-# 	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
-# 	    && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
-# $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/interpreter: $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/plugin/semantics.$(LIBEXT)
-# 	eval $$(opam config env) \
-# 	    && cd $(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled \
-# 	        && ocamllex lexer.mll \
-# 	        && ocamlyacc parser.mly \
-# 	        && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml hooks.ml run.ml -thread \
-# 	        && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package ethereum-semantics-plugin-ocaml -safe-string realdef.ml -match-context-rows 2 \
-# 	        && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT) \
-# 	        && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) hooks.$(EXT) run.$(EXT) interpreter.ml \
-# 	                               -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package ethereum-semantics-plugin-ocaml -linkpkg -linkall -thread -safe-string
-
-# LLVM Backend
-
-$(llvm_kompiled): $(llvm_files) $(libff_out)
-	@echo "== kompile: $@"
-	$(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) --backend llvm \
-	                 --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/llvm/$(MAIN_DEFN_FILE).k \
-	                 --directory $(DEFN_DIR)/llvm -I $(DEFN_DIR)/llvm -I $(DEFN_DIR)/llvm \
-	                 --hook-namespaces KRYPTO \
-	                 $(KOMPILE_OPTS) \
-	                 -ccopt $(PLUGIN_SUBMODULE)/plugin-c/crypto.cpp \
-	                 -ccopt -g -ccopt -std=c++11 -ccopt -O2 \
-	                 -ccopt -L$(LIBRARY_PATH) \
-	                 -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 $(addprefix -ccopt ,$(LINK_PROCPS))
+# LLVM Backend (not supported)
 
 # Tests
 # -----
@@ -278,36 +228,17 @@ tests/%.parse: tests/%
 	$(TEST) kast --backend $(TEST_CONCRETE_BACKEND) $< kast > $@-out
 	rm -rf $@-out
 
+tests/%.run: tests/%
+	$(TEST) krun --backend $(TEST_CONCRETE_BACKEND) $< > $@-out
+	rm -rf $@-out
+
+# The files in the disambiguator repo uses a different dialect
+wasm-yul-files:=$(wildcard tests/libyul/yulOptimizerTests/disambiguator/*.yul) tests/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/libyul/yulOptimizerTests/expressionInliner/with_args.yul
 
 # Parse Tests
+interpreter_tests:=$(wildcard tests/libyul/yulInterpreterTests/*.yul)
+optimizer_tests:=$(filter-out $(wasm-yul-files), $(wildcard tests/libyul/yulOptimizerTests/*/*.yul))
 
-parse_tests:=$(wildcard tests/libyul/yulOptimizerTests/*/*.yul)
+test-parse: $(optimizer_tests:=.parse)
 
-test-parse: $(parse_tests:=.parse)
-	echo $(parse_tests)
-
-# Sphinx HTML Documentation
-
-# You can set these variables from the command line.
-SPHINXOPTS     =
-SPHINXBUILD    = sphinx-build
-PAPER          =
-SPHINXBUILDDIR = $(BUILD_DIR)/sphinx-docs
-
-# Internal variables.
-PAPEROPT_a4     = -D latex_paper_size=a4
-PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d ../$(SPHINXBUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-# the i18n builder cannot share the environment and doctrees with the others
-I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-
-sphinx:
-	@echo "== media: $@"
-	mkdir -p $(SPHINXBUILDDIR) \
-	    && cp -r media/sphinx-docs/* $(SPHINXBUILDDIR) \
-	    && cp -r *.md $(SPHINXBUILDDIR)/. \
-	    && cd $(SPHINXBUILDDIR) \
-	    && sed -i 's/{.k[ a-zA-Z.-]*}/k/g' *.md \
-	    && $(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) html \
-	    && $(SPHINXBUILD) -b text $(ALLSPHINXOPTS) html/text
-	@echo "== sphinx: HTML generated in $(SPHINXBUILDDIR)/html, text in $(SPHINXBUILDDIR)/html/text"
+test-run: $(interpreter_tests:=.run)
