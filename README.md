@@ -13,3 +13,4 @@ make
 Aim is to verify solidity compiler optimization steps.
 
 Currently running some basic examples. Try for example `./kyulrun tests/simple/loopunoptimized.yul`
+
