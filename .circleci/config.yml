@@ -1,4 +1,4 @@
-version: 2
+version: 2.0
 jobs:
   build:
     macos:
@@ -10,21 +10,45 @@ jobs:
       - run:
           name: Install build dependencies
           command: |
-          brew tap caskroom/cask
-          brew cask install adoptopenjdk12
-          brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3 libffi
-          make deps
-      - store_artifacts: *artifacts_yuls
-      - persist_to_workspace: *artifacts_executables
+            brew tap caskroom/cask
+            brew cask install adoptopenjdk12
+            brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3
+            make deps
 
-  test:
-      macos:
-      xcode: "10.0.0"
-    environment:
-      TERM: xterm
-    steps:
-      - checkout
-      - run:
-          name: Test parsing
-          command: |
-          make test-parse 
+    # macos:
+    #   - image: circleci/ruby:2.4.2-jessie-node
+    # steps:
+    #   - checkout
+    #   - run: |
+    #          brew tap caskroom/cask
+    #          brew cask install adoptopenjdk12
+    #          brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3
+    #          make deps
+# version: 2
+# jobs:
+#   build:
+#     macos:
+#       xcode: "10.0.0"
+#     environment:
+#       TERM: xterm
+#     steps:
+#       - checkout
+#       - run:
+#           name: Install build dependencies
+#           command: |
+#             brew tap caskroom/cask
+#             brew cask install adoptopenjdk12
+#             brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3 libffi
+#             make deps
+
+#   test:
+#     macos:
+#       xcode: "10.0.0"
+#     environment:
+#       TERM: xterm
+#     steps:
+#       - checkout
+#       - run:
+#           name: Test parsing
+#           command: |
+#              make test-parse 
