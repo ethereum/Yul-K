@@ -1,0 +1,6 @@
+{ }
+// ====
+// step: disambiguator
+// yul: true
+// ----
+// { }

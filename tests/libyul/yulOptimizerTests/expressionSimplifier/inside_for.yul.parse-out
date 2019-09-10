@@ -1,0 +1,2 @@
+`{_}_YUL-SYNTAX`(`___YUL-SYNTAX`(`let_:=__YUL-SYNTAX`(#token("a","Id"),#token("10","Int")),`___YUL-SYNTAX`(`for_____YUL-SYNTAX`(`{_}_YUL-SYNTAX`(`.List{"___YUL-SYNTAX"}`(.KList)),`iszero(_)_YUL-SYNTAX`(`_(_)_YUL-SYNTAX`(#token("eq","Id"),listId(#token("a","Id"),listId(#token("0","Int"),`.List{"listId"}`(.KList))))),`{_}_YUL-SYNTAX`(`___YUL-SYNTAX`(`_:=__YUL-SYNTAX`(#token("a","Id"),`add(_,_)_YUL-SYNTAX`(#token("a","Id"),#token("1","Int"))),`.List{"___YUL-SYNTAX"}`(.KList))),`{_}_YUL-SYNTAX`(`.List{"___YUL-SYNTAX"}`(.KList))),`.List{"___YUL-SYNTAX"}`(.KList))))
+
