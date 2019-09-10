@@ -1,6 +1,9 @@
-[submodule "deps/evm-semantics"]
-	path = deps/evm-semantics
-	url = git@github.com:kframework/evm-semantics.git
-[submodule "deps/eei-semantics"]
-	path = deps/eei-semantics
-	url = git@github.com:kframework/eei-semantics.git
+[submodule "deps/k"]
+	path = deps/k
+	url = git@github.com:kframework/k.git
+[submodule "deps/pandoc-tangle"]
+	path = deps/pandoc-tangle
+	url = git@github.com:ehildenb/pandoc-tangle.git
+[submodule "deps/-f"]
+	path = deps/-f
+	url = git@github.com:ehildenb/pandoc-tangle.git

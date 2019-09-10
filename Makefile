@@ -16,10 +16,8 @@ export PKG_CONFIG_PATH
 INSTALL_PREFIX:=/usr/local
 INSTALL_DIR?=$(DESTDIR)$(INSTALL_PREFIX)/bin
 
-DEPS_DIR:=deps
-eei_submodule:=$(DEPS_DIR)/eei-semantics
-evm_submodule:=$(DEPS_DIR)/evm-semantics
-K_SUBMODULE:=$(evm_submodule)/deps/k
+DEPS_DIR:=./deps
+K_SUBMODULE:=$(DEPS_DIR)/k
 
 #PLUGIN_SUBMODULE:=$(abspath $(DEPS_DIR)/plugin)
 
@@ -31,38 +29,13 @@ PATH:=$(K_BIN):$(PATH)
 export PATH
 
 # need relative path for `pandoc` on MacOS
-PANDOC_TANGLE_SUBMODULE:=$(evm_submodule)/deps/pandoc-tangle
+PANDOC_TANGLE_SUBMODULE:=$(DEPS_DIR)/pandoc-tangle
 TANGLER:=$(PANDOC_TANGLE_SUBMODULE)/tangle.lua
 LUA_PATH:=$(PANDOC_TANGLE_SUBMODULE)/?.lua;;
 export TANGLER
 export LUA_PATH
 
 all: build
-
-evm_make:=make --directory $(evm_submodule) DEFN_DIR=../../$(DEFN_DIR)
-evm: $(evm_submodule)/make.timestamp
-
-eei_make:=make --directory $(eei_submodule) DEFN_DIR=../../$(DEFN_DIR)
-eei_clean:=make --directory $(eei_submodule) clean
-
-evm_files=evm.k data.k
-eei_files=eei-driver.k eei.k
-evm_source_files:=$(patsubst %, $(evm_submodule)/%, $(patsubst %.k, %.md, $(evm_files)))
-
-eei_source_files:=$(patsubst %, $(eei_submodule)/%, $(patsubst %.k, %.md, $(eei_files)))
-
-$(evm_submodule)/make.timestamp: $(evm_source_files)
-	git submodule update --init --recursive
-	$(evm_make) deps
-	$(evm_make) build-java
-	touch $(evm_submodule)/make.timestamp
-
-$(eei_submodule)/make.timestamp: $(eei_source_files)
-	git submodule update --init --recursive
-	$(eei_make) deps
-	$(eei_make) build-java
-	touch $(eei_submodule)/make.timestamp
-
 
 clean:
 	rm -rf $(DEFN_DIR)
@@ -92,10 +65,8 @@ llvm-deps: $(libff_out) deps
 llvm-deps: BACKEND_SKIP=-Dhaskell.backend.skip
 haskell-deps: deps
 haskell-deps: BACKEND_SKIP=-Dllvm.backend.skip
-evm-deps: $(evm_submodule)/make.timestamp
-eei-deps: $(eei_submodule)/make.timestamp
 
-deps: eei-deps system-deps
+deps: k-deps tangle-deps
 system-deps: ocaml-deps
 k-deps: $(K_SUBMODULE)/make.timestamp
 tangle-deps: $(TANGLER)
@@ -132,11 +103,10 @@ LLVM_KOMPILE_OPTS:=
 
 ocaml_kompiled:=$(DEFN_DIR)/ocaml/$(MAIN_DEFN_FILE)-kompiled/interpreter
 java_kompiled:=$(DEFN_DIR)/java/$(MAIN_DEFN_FILE)-kompiled/timestamp
-node_kompiled:=$(DEFN_DIR)/vm/kevm-vm
 haskell_kompiled:=$(DEFN_DIR)/haskell/$(MAIN_DEFN_FILE)-kompiled/definition.kore
 llvm_kompiled:=$(DEFN_DIR)/llvm/$(MAIN_DEFN_FILE)-kompiled/interpreter
 
-build: build-java
+build: deps build-java
 build-ocaml: $(ocaml_kompiled)
 build-java: $(java_kompiled)
 build-node: $(node_kompiled)

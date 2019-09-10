@@ -7,7 +7,7 @@ kyul_dir="${KYUL_DIR:-.}"
 build_dir="$kyul_dir/.build"
 defn_dir="${KYUL_DEFN_DIR:-$build_dir/defn}"
 lib_dir="$build_dir/local/lib"
-k_release_dir="${K_RELEASE:-$kyul_dir/deps/evm-semantics/deps/k/k-distribution/target/release/k}"
+k_release_dir="${K_RELEASE:-$kyul_dir/deps/k/k-distribution/target/release/k}"
 
 export PATH="$k_release_dir/lib/native/linux:$k_release_dir/lib/native/linux64:$k_release_dir/bin/:$PATH"
 export LD_LIBRARY_PATH="$k_release_dir/lib/native/linux64:$lib_dir:${LD_LIBRARY_PATH:-}"

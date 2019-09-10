@@ -2,7 +2,8 @@
 const {docopt} = require("docopt");
 const path = require("path");
 const {execFile, execFileSync}   = require('child_process');
-const K_RELEASE=process.env.K_RELEASE || 'deps/evm-semantics/deps/k/k-distribution/target/release/k'
+const K_RELEASE=process.env.K_RELEASE || './deps/k/k-distribution/target/release/k'
+
 const usage = `
 Usage:
   kyulrun <file>
