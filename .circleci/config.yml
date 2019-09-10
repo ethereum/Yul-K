@@ -1,20 +1,30 @@
 version: 2
 jobs:
   build:
+    macos:
+      xcode: "10.0.0"
+    environment:
+      TERM: xterm
     steps:
       - checkout
       - run:
-          name: Make dependencies
-          command: make deps
-      - run:
-          name: Build java definition
-          command: make build-java
-  test:
-    steps:
-      - run:
-          name: Parsing
-          command: make test-parse
+          name: Install build dependencies
+          command: |
+          brew tap caskroom/cask
+          brew cask install adoptopenjdk12
+          brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3 libffi
+          make deps
+      - store_artifacts: *artifacts_yuls
+      - persist_to_workspace: *artifacts_executables
 
+  test:
+      macos:
+      xcode: "10.0.0"
+    environment:
+      TERM: xterm
+    steps:
+      - checkout
       - run:
-          name: Interpret
-          command: make test-run
+          name: Test parsing
+          command: |
+          make test-parse 
