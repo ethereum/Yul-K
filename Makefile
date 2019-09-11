@@ -201,9 +201,13 @@ tests/%.parse: tests/%
 	rm -rf $@-out
 
 tests/%.run: tests/%
-	$(TEST) run --backend $(TEST_CONCRETE_BACKEND) $< > $@-out
-	rm -rf $@-out
+	./kyulrun --getTrace $< > $@-expected
+	./kyulrun $< > $@-out
+	diff $@-out $@-expected
+	rm -rf $@-out $@-expected
 
+
+simple-tests:=$(wildcard tests/simple/*.yul)
 # The files in the disambiguator repo uses a different dialect
 wasm-dialect:=$(wildcard tests/solidity/test/libyul/yulOptimizerTests/disambiguator/*.yul) tests/solidity/test/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/solidity/test/libyul/yulOptimizerTests/expressionInliner/with_args.yul $(wildcard tests/solidity/test/libyul/yulOptimizerTests/functionGrouper/*.yul) $(wildcard tests/solidity/test/libyul/yulOptimizerTests/functionHoister/*.yul) $(wildcard tests/solidity/test/libyul/yulOptimizerTests/mainFunction/*.yul)
 
@@ -215,6 +219,6 @@ optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests
 
 split-tests: $(SOLIDITY)/make.timestamp
 
-test-parse: $(optimizer_tests:=.parse)
+test-parse: $( $(optimizer_tests:=.parse)
 
 test-run: $(interpreter_tests:=.run)

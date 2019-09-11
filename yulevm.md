@@ -49,7 +49,6 @@ rule <k> break ~> ST:Stmt => break ... </k> [owise]
 rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k>
 rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>
 
-
 rule <k> ... ST STMTS:Stmts => ST ~> STMTS ... </k>
 rule <k> ... .Stmts => .K ... </k>
 ```
@@ -115,7 +114,8 @@ rule <k> sload(X:Int) => Y ... </k>
                  | Int ">>sWord" Int [function]
  // -------------------------------------------
     rule W0 +Word W1   => W0 +Int W1 modInt pow256
-    rule W0 -Word W1   => W0 -Int W1 modInt pow256
+    rule W0 -Word W1   => W0 -Int W1 requires W0 >=Int W1
+    rule W0 -Word W1   => W0 +Int pow256 -Int W1 modInt pow256 requires W0 <Int W1
     rule W0 *Word W1   => W0 *Int W1 modInt pow256
     rule W0 /Word W1   => 0            requires W1  ==Int 0
     rule W0 /Word W1   => W0 /Int W1   requires W1 =/=Int 0
@@ -171,12 +171,15 @@ rule <k> mstore(X, Y) => . ... </k>
 rule <k> mload(X) => Bytes2Int(#range(MEM, X, 32), BE, Unsigned) ... </k>
 <memory> MEM </memory>
 
-syntax Bytes ::= #range ( Map , Int , Int )                 [function]
-               | #range ( Map , Int , Int , Int , Bytes )   [function, klabel(#rangeAux)]
+syntax Bytes ::= #range ( Map , Int , Int )         [function]
+               | #range ( Map , Int , Int , Bytes ) [function, klabel(#rangeAux)]
 //---------------------------------------------------------------------------------------
-rule #range(WM, START, WIDTH) => #range(WM, START, 0, WIDTH, padLeftBytes(.Bytes, WIDTH, 0))
-rule #range(WM, I, WIDTH, WIDTH, WS) => WS
-rule #range(WM, I,     J, WIDTH, WS) => #range(WM, I +Int 1, J +Int 1, WIDTH, WS [ J <- {WM[I] orDefault 0}:>Int ]) [owise]
+    rule #range(WM, START, WIDTH) => #range(WM, START +Int WIDTH -Int 1, WIDTH, .Bytes)
+
+    rule #range(WM,           END, WIDTH, WS) => WS                                                requires WIDTH ==Int 0
+    rule #range(WM,           END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, Int2Bytes(0, BE, Unsigned) +Bytes WS)
+    requires (WIDTH >Int 0) andBool notBool END in_keys(WM)
+    rule #range(END |-> W WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, Int2Bytes(W, BE, Unsigned) +Bytes WS) requires (WIDTH >Int 0)
 
 syntax Map ::= Map "[" Int ":=" Bytes "]" [function, klabel(mapWriteBytes)]
 // ------------------------------------------------------------------------
@@ -189,3 +192,4 @@ rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ] re
 
 endmodule
 ```
+

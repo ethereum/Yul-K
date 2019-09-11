@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 const {docopt} = require("docopt");
 const path = require("path");
-const {execFile, execFileSync}   = require('child_process');
+const fs = require('fs');
+const {execFileSync}   = require('child_process');
 const K_RELEASE=process.env.K_RELEASE || './deps/k/k-distribution/target/release/k'
 
 const usage = `
 Usage:
-  kyulrun <file>
+  kyulrun [options] <file>
+
+Options:
+  --getTrace
 `
 const cmd = docopt(usage, {});
+const pgmPath = cmd['<file>']
+const getTrace = cmd['--getTrace']
 
 const get = (term, path) => {
   let p = path
@@ -26,71 +32,97 @@ const getKJSONPath = (termList, pathComponents) => {
   return getKJSONPath(subTerm.args, pathComponents.slice(1))
 }
 
+const bigToHex = o => {
+  //stupid javascript
+  let a = execFileSync('./hex', [o])
+  return a.toString().trim()
+}
+
+const div = (n,d) => {
+  let a = execFileSync('bc <<<"obase=16; $1 / $2"', [n,d])
+}
+
 const toHex = o => {
   let h = o.toString(16)
   if (h.length == 1) return '0'+h
   else return h
 }
 
-
 const formatMem = o => {
   //mem entries as a list with entries [loc, value]
   let entries;
   if (o.label == '_|->_') {
-    entries = [o.args.map(g => Number(g.token))]
+    entries = [o.args.map(g => g.token)]
   }
   else if (o.label == '.Map') {return false}
   else if (o.label == '_Map_') {
-    entries = o.args.map(f => f.args.map(g => Number(g.token)))
+    entries = o.args.map(f => f.args.map(g => g.token))
   }
-  //fill with zeros to a continuous segment which is a multiple of 32
-  let start = '00'.repeat(entries[0][0]) + entries.map(s => toHex(s[1])).reduce((a, e) => a + e, [])
-  let mem = start.padEnd(start.length + (64 - start.length % 64), '00')
+  let keys = new Set(entries.map(s => Math.floor(Number(s[0]) / 32)))
   let prettyMem = '';
-  for (let i=0; i<Math.floor(mem.length / 64);i++) {
-    let key = (i+1).toString(16)+'0'
-    let entry = mem.slice(i*64, i*64+64)
-    if (!(entry == '0'.repeat(64))) {
-      prettyMem += `    ${key}: ${entry}\n`
+  keys.forEach(key => {
+    let entry = Array(32).fill('00')
+    entries.filter(s => Math.floor(Number(s[0]) / 32) == key && !(s[1] == '0'))
+      .forEach(val => {
+        entry[(Number(val[0]) % 32)] = toHex(Number(val[1]))
+      })
+    if (!(entry.join('') == '00'.repeat(32))) {
+      prettyMem +='   '+(key*2).toString(16)+'0' + ': ' + entry.join('') + '\n'
     }
-  }
+  })
   return prettyMem
 }
 
 const formatStorage = o => {
   let entries;
   if (o.label == '_|->_') {
-    entries = [o.args.map(g => Number(g.token))]
+    entries = [o.args.map(g => g.token)]
   }
   else if (o.label == '.Map') {return false}
   else if (o.label == '_Map_') {
-    entries = o.args.map(f => f.args.map(g => Number(g.token)))
+    entries = o.args.map(f => f.args.map(g => g.token))
   }
   let prettyStorage = ''
   for (let i=0; i<entries.length; i++) {
-    if (!entries[i][1] == 0) {
-      prettyStorage += `  ${toHex(entries[i][0]).padStart(64,'0')}: ${toHex(entries[i][1]).padStart(64,'0')}\n`
+    if (!entries[i][1] == '0') {
+      prettyStorage += `  ${bigToHex(entries[i][0]).padStart(64,'0')}: ${bigToHex(entries[i][1]).padStart(64,'0')}\n`
     }
   }
   return prettyStorage
 }
-    
+const getTraceFromTest = testPath => {
+  return fs.readFileSync(testPath)
+      .toString()
+    .split('----\n')[1]
+    .replace(/\/\/ /g,'').trim();
+}
 
-let pgmPath = cmd['<file>']
+if (getTrace) {
+  console.log(getTraceFromTest(pgmPath))
+  process.exit()
+}
+
 try {
   let krun = execFileSync('./kyul',
                           ['run',
                             pgmPath]
                          )
-  let term = JSON.parse(krun.toString()).term
+  let term;
+  try {
+    term = JSON.parse(krun.toString()).term
+  } catch(e) {  console.log("Malformed output: " + e.toString())
+                process.exit(1)
+  }
   let formatedMem = formatMem(get(term, 'memory'))
   let formatedStorage = formatStorage(get(term,'storage'))
-  console.log('Trace:')
-  console.log('Memory dump:')
-  if (formatedMem) {console.log(formatedMem)}
-  console.log('Storage dump:')
-  if (formatedStorage) {console.log(formatedStorage)}
+  let trace = 'Trace:\nMemory dump:\n'
+  if (formatedMem) trace+=formatedMem
+  trace+='Storage dump:'
+  if (formatedStorage) trace+='\n' + formatedStorage
+  console.log(trace)
+  process.exit()
 } catch(e) {
   console.log(e.toString())
+  process.exit(1)
 }
 
