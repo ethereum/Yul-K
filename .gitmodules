@@ -7,3 +7,6 @@
 [submodule "deps/-f"]
 	path = deps/-f
 	url = git@github.com:ehildenb/pandoc-tangle.git
+[submodule "tests/solidity"]
+	path = tests/solidity
+	url = git@github.com:ethereum/solidity.git

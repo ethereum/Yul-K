@@ -28,6 +28,9 @@ K_LIB:=$(K_RELEASE)/lib
 PATH:=$(K_BIN):$(PATH)
 export PATH
 
+#Solidity submodule for tests
+SOLIDITY_SUBMODULE:=tests/solidity
+
 # need relative path for `pandoc` on MacOS
 PANDOC_TANGLE_SUBMODULE:=$(DEPS_DIR)/pandoc-tangle
 TANGLER:=$(PANDOC_TANGLE_SUBMODULE)/tangle.lua
@@ -83,10 +86,9 @@ $(TANGLER):
 	@echo "== submodule: $@"
 	git submodule update --init -- $(PANDOC_TANGLE_SUBMODULE)
 
-$(PLUGIN_SUBMODULE)/make.timestamp:
+$(SOLIDITY):
 	@echo "== submodule: $@"
-	git submodule update --init --recursive -- $(PLUGIN_SUBMODULE)
-	touch $(PLUGIN_SUBMODULE)/make.timestamp
+	git submodule update --init -- $(SOLIDITY_SUBMODULE)
 
 ocaml-deps:
 	eval $$(opam config env) \
@@ -179,7 +181,6 @@ $(ocaml_kompiled): $(ocaml_files)
 
 
 ocaml_dir:=$(DEFN_DIR)/ocaml
-#ocaml_defn:=$(patsubst %, $(ocaml_dir)/%, $(_files))
 
 
 
@@ -203,14 +204,14 @@ tests/%.run: tests/%
 	rm -rf $@-out
 
 # The files in the disambiguator repo uses a different dialect
-wasm-dialect:=$(wildcard tests/libyul/yulOptimizerTests/disambiguator/*.yul) tests/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/libyul/yulOptimizerTests/expressionInliner/with_args.yul
+wasm-dialect:=$(wildcard tests/solidity/libyul/yulOptimizerTests/disambiguator/*.yul) tests/solidity/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/solidity/libyul/yulOptimizerTests/expressionInliner/with_args.yul $(wildcard tests/solidity/libyul/yulOptimizerTests/functionGrouper/*.yul) $(wildcard tests/solidity/libyul/yulOptimizerTests/functionHoister/*.yul) $(wildcard tests/solidity/libyul/yulOptimizerTests/mainFunction/*.yul)
 
-failing_tests=tests/libyul/yulOptimizerTests/abi2.yul
+failing_tests=tests/solidity/libyul/yulOptimizerTests/fullSuite/abi2.yul tests/solidity/libyul/yulOptimizerTests/fullSuite/abi_example1.yul tests/solidity/libyul/yulOptimizerTests/fullSuite/aztec.yul
 
 # Parse Tests
-interpreter_tests:=$(wildcard tests/libyul/yulInterpreterTests/*.yul)
-optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests/libyul/yulOptimizerTests/*/*.yul))
+interpreter_tests:=$(wildcard tests/solidity/libyul/yulInterpreterTests/*.yul)
+optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests/solidity/libyul/yulOptimizerTests/*/*.yul))
 
-test-parse: $(optimizer_tests:=.parse)
+test-parse: $(SOLIDITY) $(optimizer_tests:=.parse)
 
 test-run: $(interpreter_tests:=.run)
