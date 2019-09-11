@@ -59,7 +59,7 @@ syntax FunctionDefinition ::= "function" Id"("Ids")" Block
 syntax VariableDeclaration ::= "let" Ids ":=" Expr [strict(2)]
                              | "let" Ids
 
-syntax Assignment ::= Id ":=" Expr [strict(2)]
+syntax Assignment ::= Ids ":=" Expr [strict(2)]
 
 syntax Expr ::= FunctionCall | Id | Literal
 
