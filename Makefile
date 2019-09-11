@@ -86,9 +86,10 @@ $(TANGLER):
 	@echo "== submodule: $@"
 	git submodule update --init -- $(PANDOC_TANGLE_SUBMODULE)
 
-$(SOLIDITY):
+$(SOLIDITY)/make.timestamp:
 	@echo "== submodule: $@"
 	git submodule update --init -- $(SOLIDITY_SUBMODULE)
+	touch $(SOLIDITY_SUBMODULE)/make.timestamp
 
 ocaml-deps:
 	eval $$(opam config env) \
@@ -204,14 +205,16 @@ tests/%.run: tests/%
 	rm -rf $@-out
 
 # The files in the disambiguator repo uses a different dialect
-wasm-dialect:=$(wildcard tests/solidity/libyul/yulOptimizerTests/disambiguator/*.yul) tests/solidity/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/solidity/libyul/yulOptimizerTests/expressionInliner/with_args.yul $(wildcard tests/solidity/libyul/yulOptimizerTests/functionGrouper/*.yul) $(wildcard tests/solidity/libyul/yulOptimizerTests/functionHoister/*.yul) $(wildcard tests/solidity/libyul/yulOptimizerTests/mainFunction/*.yul)
+wasm-dialect:=$(wildcard tests/solidity/test/libyul/yulOptimizerTests/disambiguator/*.yul) tests/solidity/test/libyul/yulOptimizerTests/expressionInliner/simple.yul tests/solidity/test/libyul/yulOptimizerTests/expressionInliner/with_args.yul $(wildcard tests/solidity/test/libyul/yulOptimizerTests/functionGrouper/*.yul) $(wildcard tests/solidity/test/libyul/yulOptimizerTests/functionHoister/*.yul) $(wildcard tests/solidity/test/libyul/yulOptimizerTests/mainFunction/*.yul)
 
-failing_tests=tests/solidity/libyul/yulOptimizerTests/fullSuite/abi2.yul tests/solidity/libyul/yulOptimizerTests/fullSuite/abi_example1.yul tests/solidity/libyul/yulOptimizerTests/fullSuite/aztec.yul
+failing_tests=tests/solidity/test/libyul/yulOptimizerTests/fullSuite/abi2.yul tests/solidity/test/libyul/yulOptimizerTests/fullSuite/abi_example1.yul tests/solidity/test/libyul/yulOptimizerTests/fullSuite/aztec.yul
 
 # Parse Tests
-interpreter_tests:=$(wildcard tests/solidity/libyul/yulInterpreterTests/*.yul)
-optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests/solidity/libyul/yulOptimizerTests/*/*.yul))
+interpreter_tests:=$(wildcard tests/solidity/test/libyul/yulInterpreterTests/*.yul)
+optimizer_tests:=$(filter-out $(wasm-dialect) $(failing_tests), $(wildcard tests/solidity/test/libyul/yulOptimizerTests/*/*.yul))
 
-test-parse: $(SOLIDITY) $(optimizer_tests:=.parse)
+split-tests: $(SOLIDITY)/make.timestamp
+
+test-parse: $(optimizer_tests:=.parse)
 
 test-run: $(interpreter_tests:=.run)
