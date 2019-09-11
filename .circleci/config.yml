@@ -24,6 +24,7 @@ jobs:
           command: |
             brew install automake libtool gmp mpfr pkg-config pandoc maven opam z3
             make
+            make split-tests
             make test-parse 
 workflows:
   version: 2
