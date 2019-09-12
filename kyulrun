@@ -113,7 +113,7 @@ try {
   } catch(e) {  console.log("Malformed output: " + e.toString())
                 process.exit(1)
   }
-  let formatedMem = formatMem(get(term, 'memory'))
+  let formatedMem = formatMem(get(term, 'callState.memory'))
   let formatedStorage = formatStorage(get(term,'storage'))
   let trace = 'Trace:\nMemory dump:\n'
   if (formatedMem) trace+=formatedMem

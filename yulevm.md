@@ -1,21 +1,24 @@
-Imports EEI semantics for now
+### Semantics of yul
+
+### Control flow
+
+All instances of `{mod}` will be replaced before kompilation to either `a` or `b` in order to 
+construct bisimilarity proofs between two different semantics.
 
 ```k
-//TODO: import eei.k or roll our own?
-//requires "eei.k"
-requires "yul.k"
-module YULEVM
+requires "yul-syntax.k"
+
+module YULEVM-{MOD}
 imports YUL-SYNTAX
-imports MAP
 imports BYTES
-//imports EEI
+imports MAP
 configuration
       <yul>
-      <k> $PGM </k>
+      <k> .K /*$PGM*/ </k>
       <varStore> .Map </varStore>
-      <memory> .Map </memory>
       <storage> .Map </storage> //TODO: multiple accounts
       <callState>
+          <memory> .Map </memory> //TODO: just Bytes instead?
           <callDepth> 0      </callDepth>
           <acct>      0      </acct>      // I_a
 //          <program>   .Code  </program>   // I_b
@@ -25,69 +28,62 @@ configuration
           <gas>       0      </gas>       // \mu_g
       </callState>
       </yul>
-```
 
-### Control flow
 
-```k
-syntax Stmt ::= "#for" Expr Block Block
 
 rule <k> for { STMTS } COND END BODY => STMTS ~> #for COND END BODY ~> #resetEnv STORE ... </k>
-     <varStore> STORE </varStore>
+     <varStore> STORE </varStore> [tag({mod})]
 
-rule <k> #for COND END BODY => if COND { BODY END #for COND END BODY } ... </k>
+rule <k> #for COND END BODY => if COND { BODY END #for COND END BODY } ... </k> [tag({mod})]
 
 rule <k> if COND BODY => .K ... </k>
-requires COND ==Int 0
+requires COND ==Int 0                 [tag({mod})]
 
 rule <k> if COND BODY => BODY ... </k>
-requires COND =/=Int 0
+requires COND =/=Int 0                [tag({mod})]
 
-rule <k> break ~> #for COND END BODY => .K ... </k>
-rule <k> break ~> ST:Stmt => break ... </k> [owise]
+rule <k> break ~> #for COND END BODY => .K ... </k> [tag({mod})]
+rule <k> break ~> ST:Stmt => break ... </k> [owise, tag({mod})]
 
-rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k>
-rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>
+rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k> [tag({mod})]
+rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>          [tag({mod})]
 
-rule <k> ... ST STMTS:Stmts => ST ~> STMTS ... </k>
-rule <k> ... .Stmts => .K ... </k>
+rule <k> ... ST STMTS:Stmts => ST ~> STMTS ... </k> [tag({mod}), structural]
+rule <k> ... .Stmts => .K ... </k> [tag({mod}), structural]
 ```
 ### Variable handling
 
 ```k
-
-syntax Stmt ::= "#resetEnv" Map
-
 rule <k> { B } => B ~> #resetEnv STORE ... </k>
-     <varStore> STORE </varStore>
+     <varStore> STORE </varStore>                                                 [tag({mod})]
 rule <k> #resetEnv OLDSTORE => .K ... </k>
-<varStore> STORE => removeAll(STORE, keys(STORE) -Set keys(OLDSTORE)) </varStore>
+<varStore> STORE => removeAll(STORE, keys(STORE) -Set keys(OLDSTORE)) </varStore> [tag({mod})]
 
 
 rule <k> let X := Y:Int => . ... </k>
      <varStore> VARS => VARS [X <- Y] </varStore>
-     requires notBool X in_keys(VARS)
+     requires notBool X in_keys(VARS)                       [tag({mod})]
 
 rule <k> let X => . ... </k>
      <varStore> VARS => VARS [X <- 0] </varStore>
-     requires notBool X in_keys(VARS)
+     requires notBool X in_keys(VARS)                       [tag({mod})]
 
 rule <k> X := Y:Int => . ... </k>
      <varStore> VARS => VARS [X <- Y] </varStore>
-     requires X in_keys(VARS)
+     requires X in_keys(VARS)                               [tag({mod})]
 
 rule <k> X:Id => VAL ... </k>
-     <varStore> (X |-> VAL) M </varStore>
+     <varStore> (X |-> VAL) M </varStore>                   [tag({mod})]
 
 ```
 ### Storage operations
 
 ```k
 rule <k> sstore(X:Int, Y:Int) => . ... </k>
-<storage> M:Map => M [X <- Y] </storage>
+<storage> M:Map => M [X <- Y] </storage>                    [tag({mod})]
 
 rule <k> sload(X:Int) => Y ... </k>
-<storage> (X |-> Y) M:Map </storage>
+<storage> (X |-> Y) M:Map </storage>                        [tag({mod})]
 ```
 
 
@@ -95,64 +91,18 @@ rule <k> sload(X:Int) => Y ... </k>
 ### Arithmetic
 
 ```k
-    syntax Int ::= Int "+Word"  Int  [function]
-                 | Int "*Word"  Int  [function]
-                 | Int "-Word"  Int  [function]
-                 | Int "/Word"  Int  [function]
-                 | Int "%Word"  Int  [function]
-                 | Int "<Word"  Int  [function]
-                 | Int ">Word"  Int  [function]
-                 | Int "<=Word" Int  [function]
-                 | Int ">=Word" Int  [function]
-                 | Int "==Word" Int  [function]
-                 |     "~Word"  Int  [function]
-                 | Int "|Word"   Int [function]
-                 | Int "&Word"   Int [function]
-                 | Int "xorWord" Int [function]
-                 | Int "<<Word"  Int [function]
-                 | Int ">>Word"  Int [function]
-                 | Int ">>sWord" Int [function]
- // -------------------------------------------
-    rule W0 +Word W1   => W0 +Int W1 modInt pow256
-    rule W0 -Word W1   => W0 -Int W1 requires W0 >=Int W1
-    rule W0 -Word W1   => W0 +Int pow256 -Int W1 modInt pow256 requires W0 <Int W1
-    rule W0 *Word W1   => W0 *Int W1 modInt pow256
-    rule W0 /Word W1   => 0            requires W1  ==Int 0
-    rule W0 /Word W1   => W0 /Int W1   requires W1 =/=Int 0
-    rule W0 %Word W1   => 0            requires W1  ==Int 0
-    rule W0 %Word W1   => W0 modInt W1 requires W1 =/=Int 0
-    rule W0 <Word  W1  => bool2Word(W0 <Int  W1)
-    rule W0 >Word  W1  => bool2Word(W0 >Int  W1)
-    rule W0 <=Word W1  => bool2Word(W0 <=Int W1)
-    rule W0 >=Word W1  => bool2Word(W0 >=Int W1)
-    rule W0 ==Word W1  => bool2Word(W0 ==Int W1)
-    rule     ~Word W   => W xorInt pow256
-    rule W0 |Word   W1 => W0 |Int W1
-    rule W0 &Word   W1 => W0 &Int W1
-    rule W0 xorWord W1 => W0 xorInt W1
-    rule W0 <<Word  W1 => W0 <<Int W1 modInt pow256 requires W1 <Int 256
-    rule W0 <<Word  W1 => 0 requires W1 >=Int 256
-    rule W0 >>Word  W1 => W0 >>Int W1
-//    rule W0 >>sWord W1 => chop( (abs(W0) *Int sgn(W0)) >>Int W1 )
-
-    syntax Int ::= bool2Word ( Bool ) [function]
- // --------------------------------------------
-    rule bool2Word( B:Bool ) => 1 requires B
-    rule bool2Word( B:Bool ) => 0 requires notBool B
-
-rule <k> add(X, Y)  => X +Word Y ... </k>
-rule <k> sub(X, Y)  => X -Word Y ... </k>
-rule <k> mul(X, Y)  => X *Word Y ... </k>
-rule <k> divu(X, Y) => X /Word Y ... </k>
+rule <k> add(X, Y)  => X +Word Y ... </k>            [tag({mod})]
+rule <k> sub(X, Y)  => X -Word Y ... </k>            [tag({mod})]
+rule <k> mul(X, Y)  => X *Word Y ... </k>            [tag({mod})]
+rule <k> divu(X, Y) => X /Word Y ... </k>            [tag({mod})]
 //TODO: signed operators
-//rule <k> divs(X, Y) =>
-rule <k> mod(X, Y)  => X %Word Y ... </k>
-rule <k> lt(X, Y)   => X <Word Y ... </k>
-rule <k> gt(X, Y)   => X >Word Y ... </k>
-rule <k> iszero(X)  => bool2Word(X ==Int 0) ... </k>
-rule <k> or(X, Y)   => X |Word Y ... </k>
-rule <k> xor(X, Y)  => X xorWord Y ... </k>
-rule <k> and(X, Y)  => X &Word Y ... </k>
+rule <k> mod(X, Y)  => X %Word Y ... </k>            [tag({mod})]
+rule <k> lt(X, Y)   => X <Word Y ... </k>            [tag({mod})]
+rule <k> gt(X, Y)   => X >Word Y ... </k>            [tag({mod})]
+rule <k> iszero(X)  => bool2Word(X ==Int 0) ... </k> [tag({mod})]
+rule <k> or(X, Y)   => X |Word Y ... </k>            [tag({mod})]
+rule <k> xor(X, Y)  => X xorWord Y ... </k>          [tag({mod})]
+rule <k> and(X, Y)  => X &Word Y ... </k>            [tag({mod})]
 ```
 
 
@@ -160,36 +110,54 @@ rule <k> and(X, Y)  => X &Word Y ... </k>
 
 
 ```k
-
-rule <k> X:HexNumber => #parseHexWord(#parseHexString(X)) ... </k>
+rule <k> X:HexNumber => #parseHexWord(#parseHexString(X)) ... </k> [tag({mod})]
 ```
 ### Memory
 ```k
+//Todo: wrap around memory
 rule <k> mstore(X, Y) => . ... </k>
-     <memory> MEM => MEM [X := padLeftBytes(Int2Bytes(Y, BE, Unsigned), 32, 0)] </memory>
+     <memory> MEM => MEM [X := padLeftBytes(Int2Bytes(Y, BE, Unsigned), 32, 0)] </memory> [tag({mod})]
 
 rule <k> mload(X) => Bytes2Int(#range(MEM, X, 32), BE, Unsigned) ... </k>
-<memory> MEM </memory>
+<memory> MEM </memory> [tag({mod})]
 
-syntax Bytes ::= #range ( Map , Int , Int )         [function]
-               | #range ( Map , Int , Int , Bytes ) [function, klabel(#rangeAux)]
-//---------------------------------------------------------------------------------------
-    rule #range(WM, START, WIDTH) => #range(WM, START +Int WIDTH -Int 1, WIDTH, .Bytes)
 
-    rule #range(WM,           END, WIDTH, WS) => WS                                                requires WIDTH ==Int 0
-    rule #range(WM,           END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, Int2Bytes(0, BE, Unsigned) +Bytes WS)
-    requires (WIDTH >Int 0) andBool notBool END in_keys(WM)
-    rule #range(END |-> W WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, Int2Bytes(W, BE, Unsigned) +Bytes WS) requires (WIDTH >Int 0)
+```
+### Heating and cooling rules
 
-syntax Map ::= Map "[" Int ":=" Bytes "]" [function, klabel(mapWriteBytes)]
-// ------------------------------------------------------------------------
-rule WM[ N := WS ] => WM [ N := WS, 0, lengthBytes(WS) ]
+Ideally, these would be generated automatically by future version of K.
 
-syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
-// -----------------------------------------------------------------
-rule WM [ N := WS, I, I ] => WM
-rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ] requires I <Int J
+```k
+rule <k> add(HOLE, E2) => HOLE ~> #addi2(E2) ... </k>     [tag({mod}), heat]
+rule <k> HOLE ~> #addi2(E2) => add(HOLE, E2) ... </k>     [tag({mod}), cool]
+rule <k> add(I1:Int, HOLE) => HOLE ~> #addi1(I1) ... </k> [tag({mod}), heat]
+rule <k> HOLE ~> #addi1(I1) => add(I1, HOLE) ... </k>     [tag({mod}), cool]
 
+rule <k> lt(HOLE, E2) => HOLE ~> #lti2(E2) ... </k>     [tag({mod}), heat]
+rule <k> HOLE ~> #lti2(E2) => lt(HOLE, E2) ... </k>     [tag({mod}), cool]
+rule <k> lt(I1:Int, HOLE) => HOLE ~> #lti1(I1) ... </k> [tag({mod}), heat]
+rule <k> HOLE ~> #lti1(I1) => lt(I1, HOLE) ... </k>     [tag({mod}), cool]
+
+rule <k> sstore(HOLE, E2) => HOLE ~> #sstorei2(E2) ... </k>     [tag({mod}), heat]
+rule <k> HOLE ~> #sstorei2(E2) => sstore(HOLE, E2) ... </k>     [tag({mod}), cool]
+rule <k> sstore(I1:Int, HOLE) => HOLE ~> #sstorei1(I1) ... </k> [tag({mod}), heat]
+rule <k> HOLE ~> #sstorei1(I1) => sstore(I1, HOLE) ... </k>     [tag({mod}), cool]
+
+rule <k> iszero(HOLE) => HOLE ~> #iszeroi ... </k>     [tag({mod}), heat]
+rule <k> I1:Int ~> #iszeroi => iszero(I1) ... </k>     [tag({mod}), cool]
+
+rule <k> if HOLE BODY => HOLE ~> #ifi(BODY) ... </k>     [tag({mod}), heat]
+rule <k> I1:Int ~> #ifi(BODY) => if I1 BODY ... </k>     [tag({mod}), cool]
+
+rule <k> if HOLE BODY => HOLE ~> #ifi(BODY) ... </k>     [tag({mod}), heat]
+rule <k> I1:Int ~> #ifi(BODY) => if I1 BODY ... </k>     [tag({mod}), cool]
+
+//TODO: multiple assignment
+rule <k> let VAR := HOLE => HOLE ~> #leti(VAR) ... </k>     [tag({mod}), heat]
+rule <k> I1:Int ~> #leti(VAR) => let VAR := I1 ... </k>     [tag({mod}), cool]
+
+rule <k> VAR := HOLE => HOLE ~> #assign(VAR) ... </k>     [tag({mod}), heat]
+rule <k> I1:Int ~> #assign(VAR) => VAR := I1 ... </k>     [tag({mod}), cool]
 endmodule
 ```
 

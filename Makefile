@@ -98,9 +98,9 @@ ocaml-deps:
 # Building
 # --------
 
-MAIN_MODULE:=YULEVM
+MAIN_MODULE:=YUL
 SYNTAX_MODULE:=YUL-SYNTAX
-MAIN_DEFN_FILE:=yulevm
+MAIN_DEFN_FILE:=main
 KOMPILE_OPTS:=
 LLVM_KOMPILE_OPTS:=
 
@@ -121,7 +121,7 @@ build-llvm: $(llvm_kompiled)
 concrete_tangle:=.k:not(.node):not(.symbolic),.standalone,.concrete
 symbolic_tangle:=.k:not(.node):not(.concrete),.standalone,.symbolic
 
-k_files=yulevm.k yul.k
+k_files=yulevm.k yul-syntax.k main.k
 EXTRA_K_FILES+=$(MAIN_DEFN_FILE).k
 ALL_K_FILES:=$(k_files) $(EXTRA_K_FILES)
 
@@ -129,11 +129,14 @@ ocaml_files=$(patsubst %, $(DEFN_DIR)/ocaml/%, $(ALL_K_FILES))
 llvm_files=$(patsubst %, $(DEFN_DIR)/llvm/%, $(ALL_K_FILES))
 java_files=$(patsubst %, $(DEFN_DIR)/java/%, $(ALL_K_FILES))
 haskell_files=$(patsubst %, $(DEFN_DIR)/haskell/%, $(ALL_K_FILES))
-defn_files=$(ocaml_files) $(llvm_file) $(java_files) $(haskell_files) $(node_files) $(web3_files)
+defn_files=$(ocaml_files) $(llvm_file) $(java_files) $(haskell_files)
 
 defn: $(defn_files)
 ocaml-defn: $(ocaml_files)
 java-defn: $(java_files)
+bisim:
+	./convert.sh a <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-a.k
+	./convert.sh b <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-b.k
 
 $(DEFN_DIR)/ocaml/%.k: %.md $(TANGLER)
 	@echo "==  tangle: $@"
@@ -147,7 +150,7 @@ $(DEFN_DIR)/java/%.k: %.md $(TANGLER)
 
 # Java Backend
 
-$(java_kompiled): $(java_files)
+$(java_kompiled): $(java_files) bisim
 	@echo "== kompile: $@"
 	$(K_BIN)/kompile --debug --main-module $(MAIN_MODULE) --backend java \
 	                 --syntax-module $(SYNTAX_MODULE) $(DEFN_DIR)/java/$(MAIN_DEFN_FILE).k \
