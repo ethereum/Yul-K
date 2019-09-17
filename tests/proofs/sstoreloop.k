@@ -1,11 +1,11 @@
 requires "main.k"
 module SYNC-POINTS
-imports YUL
+imports MAIN
 
 
 rule
 <s> ~ a => ^ b ... </s>
-<ak> #for C E B </ak>
+<ak> #for C E B ... </ak>
 [trusted]
 
 rule
@@ -15,7 +15,7 @@ rule
 
 rule
 <s> ~ b => ^ a ... </s>
-<bk> #for C E B </bk>
+<bk> #for C E B ... </bk>
 [trusted]
 
 rule
@@ -26,13 +26,16 @@ rule
 endmodule
 
 module SSTORELOOP
-imports YUL
-imports YUL-SYNTAX
+imports MAIN
 imports SYNC-POINTS
+
+syntax Id ::= "_1" [token]
+            | "x" [token]
+            | "y" [token]
 
 rule
 <c>
-<k> .K </k>
+<k> check => . </k>
 <s> ^ a </s>
 <ayul>
   <ak>
@@ -41,7 +44,7 @@ rule
       sstore(0, _1)
       let x := 0
       let y := x  
-      for { } 1 { x := add(x, 1) }
+      for { .Stmts } 1 { x := add(x, 1) }
       {
           if iszero(lt(x, _1)) { break }
           y := add(x, y)

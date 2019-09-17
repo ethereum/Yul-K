@@ -48,8 +48,8 @@ rule <k> break ~> ST:Stmt => break ... </k> [owise, tag({mod})]
 rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k> [tag({mod})]
 rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>          [tag({mod})]
 
-rule <k> ... ST STMTS:Stmts => ST ~> STMTS ... </k> [tag({mod}), structural]
-rule <k> ... .Stmts => .K ... </k> [tag({mod}), structural]
+rule <k> ST STMTS:Stmts => ST ~> STMTS ... </k> [tag({mod}), structural]
+rule <k> .Stmts => .K ... </k> [tag({mod}), structural]
 ```
 ### Variable handling
 

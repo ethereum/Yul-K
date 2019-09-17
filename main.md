@@ -3,10 +3,16 @@
 requires "yul-syntax.k"
 requires "yulevm-a.k"
 requires "yulevm-b.k"
-module YUL
+module MAIN-SYNTAX
+imports YUL-SYNTAX
+
+endmodule
+
+module MAIN
+
+imports MAIN-SYNTAX
 imports YULEVM-A
 imports YULEVM-B
-imports YUL-SYNTAX
 
 imports STRATEGY
 imports RULE-TAG-SYNTAX
@@ -28,6 +34,8 @@ syntax String ::= RuleTag2String ( #RuleTag ) [function, hook(STRING.token2strin
 rule <s> ~ RT:#RuleTag => . ... </s>
 requires RuleTag2String(RT) =/=String "a"
  andBool RuleTag2String(RT) =/=String "b"
+
+syntax KItem ::= "check"
 
 endmodule
 ```

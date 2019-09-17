@@ -98,7 +98,7 @@ ocaml-deps:
 # Building
 # --------
 
-MAIN_MODULE:=YUL
+MAIN_MODULE:=MAIN
 SYNTAX_MODULE:=YUL-SYNTAX
 MAIN_DEFN_FILE:=main
 KOMPILE_OPTS:=
@@ -135,8 +135,8 @@ defn: $(defn_files)
 ocaml-defn: $(ocaml_files)
 java-defn: $(java_files)
 bisim:
-	./convert.sh a <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-a.k
-	./convert.sh b <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-b.k
+	bash ./convert.sh a <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-a.k
+	bash ./convert.sh b <$(DEFN_DIR)/java/yulevm.k > $(DEFN_DIR)/java/yulevm-b.k
 
 $(DEFN_DIR)/ocaml/%.k: %.md $(TANGLER)
 	@echo "==  tangle: $@"
