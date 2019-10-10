@@ -42,14 +42,18 @@ requires COND ==Int 0                 [tag({mod})]
 rule <k> if COND BODY => BODY ... </k>
 requires COND =/=Int 0                [tag({mod})]
 
+rule <k> break ~> .Stmts => break ... </k> [tag({mod})]
+rule <k> break ~> S:Stmt STMTS:Stmts => break ~> S ~> STMTS ... </k> [tag({mod})]
+
 rule <k> break ~> #for COND END BODY => .K ... </k> [tag({mod})]
-rule <k> break ~> ST:Stmt => break ... </k> [owise, tag({mod})]
+rule <k> break ~> S:Stmt => break ... </k> [owise, tag({mod})]
 
 rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k> [tag({mod})]
 rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>          [tag({mod})]
 
-rule <k> ST STMTS:Stmts => ST ~> STMTS ... </k> [tag({mod}), structural]
-rule <k> .Stmts => .K ... </k> [tag({mod}), structural]
+rule <k> ST STMTS:Stmts => ST ~> STMTS ... </k> requires STMTS =/=K .Stmts [tag({mod})]
+rule <k> ST .Stmts => ST ... </k> [tag({mod})]
+rule <k> .Stmts => .K ... </k> [tag({mod})]
 ```
 ### Variable handling
 
