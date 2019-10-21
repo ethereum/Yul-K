@@ -156,7 +156,7 @@ syntax Instr ::= "not"           "(" Expr                   ")" [strict]
     rule W0 +Word W1   => W0 +Int W1 requires W0 +Int W1 <=Int pow256 
     rule W0 +Word W1   => W0 +Int W1 modInt pow256 requires W0 +Int W1 >Int pow256
     rule W0 -Word W1   => W0 -Int W1 requires W0 >=Int W1
-    rule W0 -Word W1   => pow256 -Int (W0 +Int -Int W1) requires W0 <Int W1
+    rule W0 -Word W1   => pow256 -Int (W0 +Int W1) requires W0 <Int W1
     rule W0 *Word W1   => W0 *Int W1 modInt pow256
     rule W0 /Word W1   => 0            requires W1  ==Int 0
     rule W0 /Word W1   => W0 /Int W1   requires W1 =/=Int 0

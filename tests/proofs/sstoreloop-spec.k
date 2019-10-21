@@ -48,7 +48,7 @@ rule
       for { .Stmts } 1 { x := add(x, 1) }
       {
           if iszero(lt(x, _1)) { break }
-          y := add(x, y)
+          y := add(y, x)
       }
       sstore(1,y)
    }
@@ -75,7 +75,7 @@ rule
   sstore(0, 4)
   let y
   for {let x := 0} lt(x, sload(0)) {x := add(x, 1)} {
-     y := add(x, y)
+     y := add(y, x)
   }
   sstore(1,y)
 } => _
@@ -149,7 +149,7 @@ rule
   <ak>
       #for 1 (
           if iszero(lt(x, _1)) { break }
-          y := add(x, y)
+          y := add(y, x)
           x := add(x, 1)
           )
        => _
@@ -160,7 +160,7 @@ rule
       y |-> Y:Int
    => _ </avars>
    <afuncs> _ => _ </afuncs>
-   <aenvStack> _ => _ </aenvStack> //TODO: strengthen
+   <aenvStack> _ => _ </aenvStack>
    <acontrol> sstore(1,y) => _ </acontrol>
    <astorage> 0 |-> ONE
    => _ </astorage>
@@ -177,7 +177,7 @@ rule
 <byul>
 <bk>
 #for lt(x, sload(0)) (
-     y := add(x, y)
+     y := add(y, x)
      x := add(x, 1)
      )
  => _
@@ -187,7 +187,7 @@ rule
  => _ </bvars>
  <bfuncs> _ => _ </bfuncs>
  <bcontrol> sstore(1,y) => _ </bcontrol>
- <benvStack> BLIST => _ </benvStack> //TODO: strengthen
+ <benvStack> _ => _ </benvStack>
  <bstorage> 0 |-> ONE => _ </bstorage>
  <bcallState>
      <bmemory> _ => _ </bmemory>
@@ -200,10 +200,7 @@ rule
  </bcallState>
  </byul>
 </c>
-requires X <=Int 100
- andBool Y <=Int 100
- andBool ONE <=Int 100
-//[trusted]
-
+requires X <=Int ONE
+ andBool ONE <=Int 100000
 
 endmodule
