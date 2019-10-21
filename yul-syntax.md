@@ -41,6 +41,7 @@ syntax Data ::= "data" String HexLiteral
 syntax Block ::= "{" Stmts "}"
 
 syntax Stmts ::= List{Stmt, ""}
+               | Stmts "+Stmts" Stmts [function]
 
 syntax Stmt ::= Block
              | FunctionDefinition
@@ -55,8 +56,10 @@ syntax Stmt ::= Block
 //TODO: Types? (Doesn't seem to be supported right now, but may be in the future
 syntax Ids ::= Id | Id "," Ids
 
-syntax FunctionDefinition ::= "function" Id"("Ids")" Block
-                            | "function" Id"("Ids")" "->" Ids Block
+syntax Id ::= ".Id"
+
+syntax FunctionDefinition ::= "function" Id"("Ids")" Block [bind(2)]
+                            | "function" Id"("Ids")" "->" Ids Block [bind(2)]
                             | "function" Id"()"
                             | "function" Id"()" "->" Ids Block
 
@@ -70,6 +73,7 @@ syntax Expr ::= FunctionCall | Id | Literal
 syntax Exprs ::=  List{Expr, ","} [klabel(listId)]
 
 syntax Cond ::= "if" Expr Block// [strict(1)]
+syntax Cond ::= "#if" Expr "(" Stmts ")"
 
 syntax Switch ::= "switch" Expr Cases
 
@@ -80,7 +84,7 @@ syntax Case ::= "case" Literal Block
 
 syntax ForLoop ::= "for" Block Expr Block Block
 
-syntax Stmt ::= "#for" Expr Block Block
+syntax Stmt ::= "#for" Expr "(" Stmts ")"
 
 syntax BreakContinue ::= "break" | "continue"
 
@@ -149,9 +153,10 @@ syntax Instr ::= "not"           "(" Expr                   ")" [strict]
                  | Int ">>Word"  Int [function]
                  | Int ">>sWord" Int [function]
  // -------------------------------------------
-    rule W0 +Word W1   => W0 +Int W1 modInt pow256
+    rule W0 +Word W1   => W0 +Int W1 requires W0 +Int W1 <=Int pow256 
+    rule W0 +Word W1   => W0 +Int W1 modInt pow256 requires W0 +Int W1 >Int pow256
     rule W0 -Word W1   => W0 -Int W1 requires W0 >=Int W1
-    rule W0 -Word W1   => W0 +Int pow256 -Int W1 modInt pow256 requires W0 <Int W1
+    rule W0 -Word W1   => pow256 -Int (W0 +Int -Int W1) requires W0 <Int W1
     rule W0 *Word W1   => W0 *Int W1 modInt pow256
     rule W0 /Word W1   => 0            requires W1  ==Int 0
     rule W0 /Word W1   => W0 /Int W1   requires W1 =/=Int 0
@@ -174,6 +179,7 @@ syntax Instr ::= "not"           "(" Expr                   ")" [strict]
  // --------------------------------------------
     rule bool2Word( B:Bool ) => 1 requires B
     rule bool2Word( B:Bool ) => 0 requires notBool B
+    rule bool2Word(A) ==K 0 => notBool(A)
 
 syntax Int ::= "pow256" /* 2 ^Int 256 */
 
@@ -181,8 +187,6 @@ rule pow256 => 11579208923731619542357098500868790785326998466564056403945758400
 ```
 The following constructs are declared in a separate module to avoid some parsing problems in the java backend
 ```k
-    syntax Stmt ::= "#resetEnv" Map
-
     syntax String  ::= #parseHexString   ( HexNumber ) [function, functional, hook(STRING.token2string)]
     syntax Int ::= #parseHexWord ( String ) [function]
  // ----------------------------------------------------
@@ -210,8 +214,9 @@ syntax Map ::= Map "[" Int ":=" Bytes "," Int "," Int "]" [function]
 rule WM [ N := WS, I, I ] => WM
 rule WM [ N := WS, I, J ] => (WM[N <- WS[I]]) [ N +Int 1 := WS, I +Int 1, J ] requires I <Int J
 
-
-syntax KItem ::= Block
+rule (S STMTS) +Stmts STS => S (STMTS +Stmts STS)
+rule .Stmts +Stmts STS => STS
+    
 ```
 
 K's program equivalence checker does not currently support productions with a `[strict]` attribute. Instead, we need to manually define heating and cooling rules for such productions.
@@ -224,5 +229,16 @@ syntax KItem ::= #addi1(K)    | #addi2(K)
                | #lti1(K)     | #lti2(K)
                | #ifi(K)
                | #leti(K)     | #assign(K)
+
+syntax KItem ::= "#findFunctions" Stmts
+
+syntax KItem ::= "#popEnv"
+
+syntax KItem ::= "#pushEnv"
+
+syntax KItem ::= Instr
+
+syntax KItem ::= Env(Map, Map)
+
 endmodule
 ```

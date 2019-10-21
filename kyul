@@ -8,7 +8,6 @@ build_dir="$kyul_dir/.build"
 defn_dir="${KYUL_DEFN_DIR:-$build_dir/defn}"
 lib_dir="$build_dir/local/lib"
 k_release_dir="${K_RELEASE:-$kyul_dir/deps/k/k-distribution/target/release/k}"
-
 export PATH="$k_release_dir/lib/native/linux:$k_release_dir/lib/native/linux64:$k_release_dir/bin/:$PATH"
 export LD_LIBRARY_PATH="$k_release_dir/lib/native/linux64:$lib_dir:${LD_LIBRARY_PATH:-}"
 
@@ -38,17 +37,17 @@ pretty_diff() {
 run_krun() {
     local output_mode
 
-    output_mode=json
+    output_mode=kast
 
     export K_OPTS=-Xss500m
     case "$backend" in
         ocaml) args=(--interpret) ;;
         *)     args=()            ;;
     esac
-    krun --directory "$backend_dir" -pMODE='printf %s' "$run_file" \
-         --output "$output_mode" \
-         --output-flatten "_Map_" \
-         "${args[@]-}" "$@" 
+    krun --directory "$backend_dir" -pMODE='printf %s' "$run_file" # \
+         # --output "$output_mode" \
+         # --output-flatten "_Map_" \
+         # "${args[@]-}" "$@" 
 }
 
 run_kast() {
@@ -87,6 +86,7 @@ run_klab() {
         --output-flatten "_Map_ #And" \
         --output-tokenize "_;__EVM ___EVM ____EVM _____EVM" \
         --output-omit "<programBytes> <program> <code> <callGas> <touchedAccounts> <interimStates> <callStack> <callData>" \
+        --output json \
         --no-alpha-renaming --restore-original-names --no-sort-collections \
         "$@"
 }
@@ -156,7 +156,6 @@ if [[ "$run_command" == 'help' ]]; then
            $0 kast      : Parse an EVM program and output it in a supported format
            $0 prove     : Run an EVM K proof
            $0 search    : Search for a K pattern in an EVM program execution
-           $0 web3      : Run version of semantics which understand Web3 RPC (**UNDER CONSTRUCTION**)
            $0 klab-(run|prove) : Run program or prove spec and dump StateLogs which KLab can read
            $0 klab-view : View the statelog associated with a given program or spec
 
@@ -166,7 +165,6 @@ if [[ "$run_command" == 'help' ]]; then
                  <interpreter arg> is an argument you want to pass to the derived interpreter.
                  <output format> is the format for Kast to output the term in.
                  <pattern> is the configuration pattern to search for.
-                 <port> is the port to listen on for Web3 JSON RPC requests.
                  <def_module> is the module to take as axioms when doing verification.
 
            klab-view: Make sure that the 'klab/bin' directory is on your PATH to use this option.
@@ -177,7 +175,6 @@ fi
 backend="java"
 [[ ! "$run_command" == 'prove' ]] || backend='java'
 [[ ! "$run_command" =~ klab*   ]] || backend='java'
-[[ ! "$run_command" =~ web3*   ]] || backend='llvm'
 if [[ $# -gt 0 ]] && [[ $1 == '--backend' ]]; then
     backend="$2"
     shift 2

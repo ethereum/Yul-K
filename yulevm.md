@@ -12,10 +12,15 @@ module YULEVM-{MOD}
 imports YUL-SYNTAX
 imports BYTES
 imports MAP
+imports LIST
 configuration
       <yul>
-      <k> .K /*$PGM*/ </k>
-      <varStore> .Map </varStore>
+      <k> .K </k>
+      <vars> .Map </vars>
+      <funcs> .K //TODO
+      </funcs>
+      <envStack> .List </envStack>
+      <control> .K </control>
       <storage> .Map </storage> //TODO: multiple accounts
       <callState>
           <memory> .Map </memory> //TODO: just Bytes instead?
@@ -29,27 +34,56 @@ configuration
       </callState>
       </yul>
 
+//Yul execution proceeds in the following steps
+//0. Split program in first scope and continuation, enter first scope.
+//1. Search the current scope for functions and put them in the <functions> cell
+//2. Execute current scope until halt
+//3. Repeat with program := continuation
 
+rule <k> { STMTS } => #pushEnv ~> #findFunctions STMTS ~> STMTS ~> #popEnv ... </k> [tag({mod})]
 
-rule <k> for { STMTS } COND END BODY => STMTS ~> #for COND END BODY ~> #resetEnv STORE ... </k>
-     <varStore> STORE </varStore> [tag({mod})]
+rule <k> #findFunctions function A() DEF ST:Stmts => #findFunctions ST ... </k>
+//TODO: add it to the <funcs> cell
 
-rule <k> #for COND END BODY => if COND { BODY END #for COND END BODY } ... </k> [tag({mod})]
+rule <k> #findFunctions S:Stmt ST:Stmts => #findFunctions ST ... </k> [owise, tag({mod})]
 
-rule <k> if COND BODY => .K ... </k>
+rule <k> #findFunctions .Stmts => .K ...  </k> [tag({mod})]
+
+//If we encounter a function definition during the execution phase
+//we simply step over it
+rule <k> function A() DEF => .K ... </k> [tag({mod})]
+
+rule <k> for { STMTS } COND { END } { BODY } ~> CONT => #pushEnv ~> STMTS ~> #for COND ( BODY +Stmts END ) ~> #popEnv </k> 
+     <control> CT => CONT ~> CT </control> [tag({mod})]
+
+rule <k> #pushEnv => .K ... </k>
+     <vars> VARS </vars>
+     <funcs> FUNCS </funcs>
+     <envStack> (.List => ListItem(Env(VARS, FUNCS))) ... </envStack> [tag({mod})]
+
+rule <k> #for COND ( BODY ) => #if COND ( BODY +Stmts ( #for COND ( BODY ) .Stmts) ) ... </k> [tag({mod})]
+
+//The internal #if construct separates the control flow from scoping rules
+rule <k> if COND { BODY }  => #pushEnv ~> #if COND ( BODY ) ~> #popEnv  ... </k> [tag({mod})]
+
+rule <k> #if COND ( BODY ) => .K ... </k>
 requires COND ==Int 0                 [tag({mod})]
 
-rule <k> if COND BODY => BODY ... </k>
+rule <k> #if COND ( BODY ) => BODY ... </k>
 requires COND =/=Int 0                [tag({mod})]
 
-rule <k> break ~> .Stmts => break ... </k> [tag({mod})]
-rule <k> break ~> S:Stmt STMTS:Stmts => break ~> S ~> STMTS ... </k> [tag({mod})]
+rule <k> break ~> _ => .K </k> [tag({mod})]
 
-rule <k> break ~> #for COND END BODY => .K ... </k> [tag({mod})]
-rule <k> break ~> S:Stmt => break ... </k> [owise, tag({mod})]
+rule <k> .K => CONT </k>
+     <control> CONT => .K </control> [tag({mod})]
 
-rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k> [tag({mod})]
-rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>          [tag({mod})]
+rule <k> #popEnv => .K ... </k>
+     <vars> OLDVARS => removeAll(OLDVARS, keys(OLDVARS) -Set keys(VARS)) </vars>
+     <funcs> _ => FUNCS </funcs>
+     <envStack> (ListItem(Env(VARS, FUNCS)) => .List) ...  </envStack> [tag({mod})]
+
+// rule <k> continue ~> INNER ~> #for COND END BODY => #for COND END BODY ... </k> [tag({mod})]
+// rule <k> continue ~> #for COND END BODY => #for COND END BODY ... </k>          [tag({mod})]
 
 rule <k> ST STMTS:Stmts => ST ~> STMTS ... </k> requires STMTS =/=K .Stmts [tag({mod})]
 rule <k> ST .Stmts => ST ... </k> [tag({mod})]
@@ -58,26 +92,20 @@ rule <k> .Stmts => .K ... </k> [tag({mod})]
 ### Variable handling
 
 ```k
-rule <k> { B } => B ~> #resetEnv STORE ... </k>
-     <varStore> STORE </varStore>                                                 [tag({mod})]
-rule <k> #resetEnv OLDSTORE => .K ... </k>
-<varStore> STORE => removeAll(STORE, keys(STORE) -Set keys(OLDSTORE)) </varStore> [tag({mod})]
-
-
 rule <k> let X := Y:Int => . ... </k>
-     <varStore> VARS => VARS [X <- Y] </varStore>
-     requires notBool X in_keys(VARS)                       [tag({mod})]
+     <vars> VARS => VARS [X <- Y] </vars>
+     requires notBool X in_keys(VARS)              [tag({mod})]
 
 rule <k> let X => . ... </k>
-     <varStore> VARS => VARS [X <- 0] </varStore>
-     requires notBool X in_keys(VARS)                       [tag({mod})]
+     <vars> VARS => VARS [X <- 0] </vars>
+     requires notBool X in_keys(VARS)              [tag({mod})]
 
 rule <k> X := Y:Int => . ... </k>
-     <varStore> VARS => VARS [X <- Y] </varStore>
-     requires X in_keys(VARS)                               [tag({mod})]
+     <vars> VARS => VARS [X <- Y] </vars>
+     requires X in_keys(VARS)                      [tag({mod})]
 
 rule <k> X:Id => VAL ... </k>
-     <varStore> (X |-> VAL) M </varStore>                   [tag({mod})]
+     <vars> (X |-> VAL) M </vars>                  [tag({mod})]
 
 ```
 ### Storage operations
@@ -132,36 +160,33 @@ rule <k> mload(X) => Bytes2Int(#range(MEM, X, 32), BE, Unsigned) ... </k>
 Ideally, these would be generated automatically by future version of K.
 
 ```k
-rule <k> add(HOLE, E2) => HOLE ~> #addi2(E2) ... </k>     [tag({mod}), heat]
-rule <k> HOLE ~> #addi2(E2) => add(HOLE, E2) ... </k>     [tag({mod}), cool]
-rule <k> add(I1:Int, HOLE) => HOLE ~> #addi1(I1) ... </k> [tag({mod}), heat]
-rule <k> HOLE ~> #addi1(I1) => add(I1, HOLE) ... </k>     [tag({mod}), cool]
+rule <k> add(HOLE, E2) => HOLE ~> #addi2(E2) ... </k>     [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #addi2(E2) => add(HOLE, E2) ... </k>     [tag({mod}), cool, concrete]
+rule <k> add(I1:Int, HOLE) => HOLE ~> #addi1(I1) ... </k> [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #addi1(I1) => add(I1, HOLE) ... </k>     [tag({mod}), cool, concrete]
 
-rule <k> lt(HOLE, E2) => HOLE ~> #lti2(E2) ... </k>     [tag({mod}), heat]
-rule <k> HOLE ~> #lti2(E2) => lt(HOLE, E2) ... </k>     [tag({mod}), cool]
-rule <k> lt(I1:Int, HOLE) => HOLE ~> #lti1(I1) ... </k> [tag({mod}), heat]
-rule <k> HOLE ~> #lti1(I1) => lt(I1, HOLE) ... </k>     [tag({mod}), cool]
+rule <k> lt(HOLE, E2) => HOLE ~> #lti2(E2) ... </k>     [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #lti2(E2) => lt(HOLE, E2) ... </k>     [tag({mod}), cool, concrete]
+rule <k> lt(I1:Int, HOLE) => HOLE ~> #lti1(I1) ... </k> [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #lti1(I1) => lt(I1, HOLE) ... </k>     [tag({mod}), cool, concrete]
 
-rule <k> sstore(HOLE, E2) => HOLE ~> #sstorei2(E2) ... </k>     [tag({mod}), heat]
-rule <k> HOLE ~> #sstorei2(E2) => sstore(HOLE, E2) ... </k>     [tag({mod}), cool]
-rule <k> sstore(I1:Int, HOLE) => HOLE ~> #sstorei1(I1) ... </k> [tag({mod}), heat]
-rule <k> HOLE ~> #sstorei1(I1) => sstore(I1, HOLE) ... </k>     [tag({mod}), cool]
+rule <k> sstore(HOLE, E2) => HOLE ~> #sstorei2(E2) ... </k>     [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #sstorei2(E2) => sstore(HOLE, E2) ... </k>     [tag({mod}), cool, concrete]
+rule <k> sstore(I1:Int, HOLE) => HOLE ~> #sstorei1(I1) ... </k> [tag({mod}), heat, concrete]
+rule <k> HOLE ~> #sstorei1(I1) => sstore(I1, HOLE) ... </k>     [tag({mod}), cool, concrete]
 
-rule <k> iszero(HOLE) => HOLE ~> #iszeroi ... </k>     [tag({mod}), heat]
-rule <k> I1:Int ~> #iszeroi => iszero(I1) ... </k>     [tag({mod}), cool]
+rule <k> iszero(HOLE) => HOLE ~> #iszeroi ... </k>     [tag({mod}), heat, concrete]
+rule <k> I1:Int ~> #iszeroi => iszero(I1) ... </k>     [tag({mod}), cool, concrete]
 
-rule <k> if HOLE BODY => HOLE ~> #ifi(BODY) ... </k>     [tag({mod}), heat]
-rule <k> I1:Int ~> #ifi(BODY) => if I1 BODY ... </k>     [tag({mod}), cool]
-
-rule <k> if HOLE BODY => HOLE ~> #ifi(BODY) ... </k>     [tag({mod}), heat]
-rule <k> I1:Int ~> #ifi(BODY) => if I1 BODY ... </k>     [tag({mod}), cool]
+rule <k> #if HOLE ( BODY ) => HOLE ~> #ifi(BODY) ... </k>    [tag({mod}), heat, concrete]
+rule <k> I1:Int ~> #ifi(BODY) => #if I1 ( BODY ) ... </k>    [tag({mod}), cool, concrete]
 
 //TODO: multiple assignment
-rule <k> let VAR := HOLE => HOLE ~> #leti(VAR) ... </k>     [tag({mod}), heat]
-rule <k> I1:Int ~> #leti(VAR) => let VAR := I1 ... </k>     [tag({mod}), cool]
+rule <k> let VAR := HOLE => HOLE ~> #leti(VAR) ... </k>     [tag({mod}), heat, concrete]
+rule <k> I1:Int ~> #leti(VAR) => let VAR := I1 ... </k>     [tag({mod}), cool, concrete]
 
-rule <k> VAR := HOLE => HOLE ~> #assign(VAR) ... </k>     [tag({mod}), heat]
-rule <k> I1:Int ~> #assign(VAR) => VAR := I1 ... </k>     [tag({mod}), cool]
+rule <k> VAR := HOLE => HOLE ~> #assign(VAR) ... </k>     [tag({mod}), heat, concrete]
+rule <k> I1:Int ~> #assign(VAR) => VAR := I1 ... </k>     [tag({mod}), cool, concrete]
 endmodule
 ```
 

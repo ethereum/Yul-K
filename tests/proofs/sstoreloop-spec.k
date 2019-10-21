@@ -2,25 +2,26 @@ requires "main.k"
 module SYNCPOINTS
 imports MAIN
 
-
 rule
 <s> ~ a => ^ b ... </s>
-<ak> #for C E B ... </ak>
+<ak> #for C (B) ... </ak>
 [trusted]
 
 rule
 <s> ~ a => ^ b ... </s>
 <ak> .K </ak>
+<acontrol> .K </acontrol>
 [trusted]
 
 rule
 <s> ~ b => ^ a ... </s>
-<bk> #for C E B ... </bk>
+<bk> #for C (B) ... </bk>
 [trusted]
 
 rule
 <s> ~ b => ^ a ... </s>
 <bk> .K </bk>
+<bcontrol> .K </bcontrol>
 [trusted]
 
 endmodule
@@ -40,7 +41,7 @@ rule
 <ayul>
   <ak>
   {
-      let _1 := 20
+      let _1 := 4
       sstore(0, _1)
       let x := 0
       let y := x  
@@ -53,10 +54,13 @@ rule
    }
     => _
    </ak>
-   <avarStore> .Map => _ </avarStore>
+   <avars> .Map => _ </avars>
+   <afuncs> .Map => _ </afuncs>
+   <aenvStack> .List => _ </aenvStack>
+   <acontrol> .K => _ </acontrol>
    <astorage> .Map => _ </astorage> //TODO: multiple accounts
    <acallState>
-      <amemory> .Map </amemory> //TODO: just Bytes instead?
+      <amemory> .Map => _ </amemory> //TODO: just Bytes instead?
       <acallDepth> 0      </acallDepth>
       <aacct>      0      </aacct>      // I_a
       <acaller>    0      </acaller>    // I_s
@@ -68,7 +72,7 @@ rule
 <byul>
 <bk>
 {
-  sstore(0, 20)
+  sstore(0, 4)
   let y
   for {let x := 0} lt(x, sload(0)) {x := add(x, 1)} {
      y := add(x, y)
@@ -76,10 +80,13 @@ rule
   sstore(1,y)
 } => _
 </bk>
- <bvarStore> .Map => _ </bvarStore>
+ <bvars> .Map => _ </bvars>
+ <bfuncs> .Map => _ </bfuncs>
+ <benvStack> .List => _ </benvStack>
+ <bcontrol> .K => _ </bcontrol>
  <bstorage> .Map => _ </bstorage> //TODO: multiple accounts
  <bcallState>
-     <bmemory> .Map </bmemory> //TODO: just Bytes instead?
+     <bmemory> .Map => _ </bmemory> //TODO: just Bytes instead?
      <bcallDepth> 0      </bcallDepth>
      <bacct>      0      </bacct>      // I_a
      <bcaller>    0      </bcaller>    // I_s
@@ -97,7 +104,10 @@ rule
 <ayul>
   <ak> .K
    </ak>
-   <avarStore> _ => _ </avarStore>
+   <avars> _ => _ </avars>
+   <afuncs> _ => _ </afuncs>
+   <aenvStack> .List => _ </aenvStack>
+   <acontrol> .K => _ </acontrol>
    <astorage> AMAP => _ </astorage> //TODO: multiple accounts
    <acallState>
       <amemory> _ </amemory> //TODO: just Bytes instead?
@@ -112,7 +122,10 @@ rule
 <byul>
 <bk> .K
 </bk>
- <bvarStore> _ => _ </bvarStore>
+ <bvars> _ => _ </bvars>
+ <bfuncs> _ => _ </bfuncs>
+ <benvStack> .List => _ </benvStack>
+ <bcontrol> .K => _ </bcontrol>
  <bstorage> BMap => _ </bstorage> //TODO: multiple accounts
  <bcallState>
      <bmemory> _ => _ </bmemory> //TODO: just Bytes instead?
@@ -134,18 +147,25 @@ rule
 <s> ^ a </s>
 <ayul>
   <ak>
-      for { .Stmts } 1 { x := add(x, 1) }
-      {
+      #for 1 (
           if iszero(lt(x, _1)) { break }
           y := add(x, y)
-      }
-      sstore(1,y)
+          x := add(x, 1)
+          )
        => _
    </ak>
-   <avarStore> _ => _ </avarStore>
-   <astorage> AMAP => _ </astorage> //TODO: multiple accounts
+   <avars>
+      _1 |-> ONE:Int
+      x |-> X:Int
+      y |-> Y:Int
+   => _ </avars>
+   <afuncs> _ => _ </afuncs>
+   <aenvStack> _ => _ </aenvStack> //TODO: strengthen
+   <acontrol> sstore(1,y) => _ </acontrol>
+   <astorage> 0 |-> ONE
+   => _ </astorage>
    <acallState>
-      <amemory> _ => _ </amemory> //TODO: just Bytes instead?
+      <amemory> _ => _ </amemory>
       <acallDepth> 0      </acallDepth>
       <aacct>      0      </aacct>      // I_a
       <acaller>    0      </acaller>    // I_s
@@ -156,16 +176,21 @@ rule
 </ayul>
 <byul>
 <bk>
-for {let x := 0} lt(x, sload(0)) {x := add(x, 1)} {
+#for lt(x, sload(0)) (
      y := add(x, y)
-  }
-  sstore(1,y)
+     x := add(x, 1)
+     )
  => _
-</bk>
- <bvarStore> _ => _ </bvarStore>
- <bstorage> BMap => _ </bstorage> //TODO: multiple accounts
+ </bk>
+ <bvars> x |-> X:Int
+         y |-> Y:Int
+ => _ </bvars>
+ <bfuncs> _ => _ </bfuncs>
+ <bcontrol> sstore(1,y) => _ </bcontrol>
+ <benvStack> BLIST => _ </benvStack> //TODO: strengthen
+ <bstorage> 0 |-> ONE => _ </bstorage>
  <bcallState>
-     <bmemory> _ => _ </bmemory> //TODO: just Bytes instead?
+     <bmemory> _ => _ </bmemory>
      <bcallDepth> 0      </bcallDepth>
      <bacct>      0      </bacct>      // I_a
      <bcaller>    0      </bcaller>    // I_s
@@ -175,8 +200,10 @@ for {let x := 0} lt(x, sload(0)) {x := add(x, 1)} {
  </bcallState>
  </byul>
 </c>
-requires AMap ==K BMap
-[trusted]
+requires X <=Int 100
+ andBool Y <=Int 100
+ andBool ONE <=Int 100
+//[trusted]
 
 
 endmodule
