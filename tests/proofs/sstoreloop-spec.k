@@ -58,9 +58,9 @@ rule
    <afuncs> .Map => _ </afuncs>
    <aenvStack> .List => _ </aenvStack>
    <acontrol> .K => _ </acontrol>
-   <astorage> .Map => _ </astorage> //TODO: multiple accounts
+   <astorage> .Map => _ </astorage> 
    <acallState>
-      <amemory> .Map => _ </amemory> //TODO: just Bytes instead?
+      <amemory> .Map => _ </amemory>
       <acallDepth> 0      </acallDepth>
       <aacct>      0      </aacct>      // I_a
       <acaller>    0      </acaller>    // I_s
@@ -151,7 +151,7 @@ rule
           if iszero(lt(x, _1)) { break }
           y := add(y, x)
           x := add(x, 1)
-          )
+          ) ~> #popEnv
        => _
    </ak>
    <avars>
@@ -161,7 +161,7 @@ rule
    => _ </avars>
    <afuncs> _ => _ </afuncs>
    <aenvStack> _ => _ </aenvStack>
-   <acontrol> sstore(1,y) => _ </acontrol>
+   <acontrol> sstore(1,y) ~> #popEnv => _ </acontrol>
    <astorage> 0 |-> ONE
    => _ </astorage>
    <acallState>
@@ -179,14 +179,14 @@ rule
 #for lt(x, sload(0)) (
      y := add(y, x)
      x := add(x, 1)
-     )
+     ) ~> #popEnv
  => _
  </bk>
  <bvars> x |-> X:Int
          y |-> Y:Int
  => _ </bvars>
  <bfuncs> _ => _ </bfuncs>
- <bcontrol> sstore(1,y) => _ </bcontrol>
+ <bcontrol> sstore(1,y) ~> #popEnv => _ </bcontrol>
  <benvStack> _ => _ </benvStack>
  <bstorage> 0 |-> ONE => _ </bstorage>
  <bcallState>
@@ -202,5 +202,6 @@ rule
 </c>
 requires X <=Int ONE
  andBool ONE <=Int 100000
+// [trusted]
 
 endmodule
